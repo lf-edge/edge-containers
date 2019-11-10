@@ -34,6 +34,13 @@ eci push --legacy --root path/to/root.img:raw --kernel path/to/kernel --initrd p
 
 The `eci` command will take care of setting the correct mime types and annotations on all of the objects.
 
+Note that disks, both root and additional, **must** have the file name, following by a `:` and the disk type, so that consumers know how to
+interpret them, e.g. to send a disk file whose name is `mydisk` and is of type qcow2:
+
+```sh
+--disk mydisk:qcow2
+```
+
 ### Pulling an ECI
 
 To pull an ECI, you simply need a registry where the components will be downloaded:
@@ -54,7 +61,7 @@ In legacy mode, the `config.mediaType` is `application/vnd.oci.image.config.v1+j
 
 In artifacts mode (the default), the media types are as follows:
 
-* `config`: `application/vnd.lfedge.eci.config.v1+json `
+* config: `application/vnd.lfedge.eci.config.v1+json`
 * kernel: `application/vnd.lfedge.eci.kernel.layer.v1.tar`
 * initrd: `application/vnd.lfedge.eci.initrd.layer.v1.tar`
 * disks: disks always have a media type that conforms to their format
@@ -76,4 +83,34 @@ The annotations are as follows:
    * `initrd`
    * `disk-root`
    * `disk-additional` - for alternate non-root/boot disks
+
+## File Names
+
+ECI is highly opinionated about the file names. No matter what names you pass to it, it will give the files particular names:
+
+* kernel: `kernel`
+* initrd: `initrd`
+* root disk: `disk-root-<original_name>`, e.g. if the file was `rootdisk.iso`, then the file will be `disk-root-rootdisk.iso`
+* additional disks: `disk-<index>-<original_name>`, e.g. if the original file was `foo.qcow2`, then the file will be `disk-0-foo.qcow2`
+
+The purpose of the disk naming is to preserve the filename extensions, which may matter, while enforcing a standard for disk order.
+
+## Go Library
+
+The go library is `github.com/lf-edge/edge-containers/pkg/registry`. Docs are available at [godoc.org/github.com/lf-edge/edge-containers/pkg/registry](https://godoc.org/github.com/lf-edge/edge-containers/pkg/registry).
+
+## Build
+
+The `eci` tool can be built via `make build`, which will deposit the build artifact in `dist/bin/eci-<os>-<arch>`, e.g. `dist/bin/eci-darwin-amd64` or `dist/bin/eci-linux-arm64`. To build it for alternate OSes or architectures, run:
+
+```sh
+make build OS=<target> ARCH=<target>
+```
+
+e.g.
+
+```sh
+make build OS=linux ARCH=amd64
+make build OS=linux ARCH=amd64
+```
 
