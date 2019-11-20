@@ -6,6 +6,8 @@ import (
 	"io"
 	"sync"
 
+	ctrcontent "github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/remotes"
 	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
@@ -15,7 +17,19 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func Pull(image, dir string, verbose bool, writer io.Writer) (*ocispec.Descriptor, error) {
+type Puller struct {
+	// Image reference to image, e.g. docker.io/foo/bar:tagabc
+	Image string
+	// Impl the OCI artifacts puller. Normally should be left blank, will be filled in to use oras. Override only for special cases like testing.
+	Impl func(ctx context.Context, resolver remotes.Resolver, ref string, ingester ctrcontent.Ingester, opts ...oras.PullOpt) (ocispec.Descriptor, []ocispec.Descriptor, error)
+}
+
+func (p *Puller) Pull(dir string, verbose bool, writer io.Writer) (*ocispec.Descriptor, error) {
+	// ensure we have a real puller
+	if p.Impl == nil {
+		p.Impl = oras.Pull
+	}
+
 	ctx := context.Background()
 	cli, err := auth.NewClient()
 	if err != nil {
@@ -32,7 +46,7 @@ func Pull(image, dir string, verbose bool, writer io.Writer) (*ocispec.Descripto
 		pullOpts = append(pullOpts, oras.WithPullBaseHandler(pullStatusTrack(writer)))
 	}
 	// pull the images
-	desc, _, err := oras.Pull(ctx, resolver, image, fileStore, oras.WithAllowedMediaTypes(allowedMediaTypes))
+	desc, _, err := p.Impl(ctx, resolver, p.Image, fileStore, oras.WithAllowedMediaTypes(allowedMediaTypes))
 	if err != nil {
 		return nil, err
 	}

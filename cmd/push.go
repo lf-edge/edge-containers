@@ -63,7 +63,11 @@ var pushCmd = &cobra.Command{
 			Legacy: legacy,
 			Disks:  addlDisks,
 		}
-		hash, err := registry.Push(image, artifact, verbose, os.Stdout)
+		pusher := registry.Pusher{
+			Artifact: artifact,
+			Image: image,
+		}
+		hash, err := pusher.Push(verbose, os.Stdout)
 		if err != nil {
 			log.Fatalf("error pushing to registry: %v", err)
 		}

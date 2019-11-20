@@ -27,7 +27,10 @@ var pullCmd = &cobra.Command{
 			log.Fatal("must be exactly one arg, the name of the image to download")
 		}
 		image := args[0]
-		desc, err := registry.Pull(image, pullDir, verbose, os.Stdout)
+		puller := registry.Puller{
+			Image: image,
+		}
+		desc, err := puller.Pull(pullDir, verbose, os.Stdout)
 		if err != nil {
 			log.Fatalf("error pulling from registry: %v", err)
 		}
