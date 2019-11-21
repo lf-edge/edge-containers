@@ -10,6 +10,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
+	github.com/stretchr/testify v1.3.0
 )
 
 replace github.com/docker/docker => github.com/docker/docker v0.7.3-0.20190826074503-38ab9da00309

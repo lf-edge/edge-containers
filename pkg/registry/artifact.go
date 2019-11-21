@@ -22,7 +22,6 @@ type Artifact struct {
 	Kernel string
 	Initrd string
 	Config string
-	Legacy bool
 	Root   *Disk
 	Disks  []*Disk
 }
