@@ -25,6 +25,10 @@ type Puller struct {
 }
 
 func (p *Puller) Pull(dir string, verbose bool, writer io.Writer) (*ocispec.Descriptor, error) {
+	// must have valid image ref
+	if p.Image == "" {
+		return nil, fmt.Errorf("must have valid image ref")
+	}
 	// ensure we have a real puller
 	if p.Impl == nil {
 		p.Impl = oras.Pull
