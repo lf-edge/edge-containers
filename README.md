@@ -65,14 +65,7 @@ The specific standard annotations are at [docs/annotations.md](./docs/annotation
 
 ## File Names
 
-ECI is highly opinionated about the file names. No matter what names you pass to it, it will give the files particular names:
-
-* kernel: `kernel`
-* initrd: `initrd`
-* root disk: `disk-root-<original_name>`, e.g. if the file was `rootdisk.iso`, then the file will be `disk-root-rootdisk.iso`
-* additional disks: `disk-<index>-<original_name>`, e.g. if the original file was `foo.qcow2`, then the file will be `disk-0-foo.qcow2`
-
-The purpose of the disk naming is to preserve the filename extensions, which may matter, while enforcing a standard for disk order.
+ECI is highly opinionated about the file names. No matter what names you pass to it, it will give the files particular names. These are listed in [docs/filenames.md](docs/filenames.md).
 
 ## Go Library
 
@@ -92,4 +85,3 @@ e.g.
 make build OS=linux ARCH=amd64
 make build OS=linux ARCH=amd64
 ```
-

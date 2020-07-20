@@ -14,4 +14,4 @@ The annotations are as follows:
    * `initrd`
    * `disk-root`
    * `disk-additional` - for alternate non-root/boot disks
-
+* `org.opencontainers.image.title: <name>` - the targeted name for the blob when stored on disk; see [filenames.md](./filenames.md)
