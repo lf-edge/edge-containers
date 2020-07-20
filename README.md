@@ -57,32 +57,11 @@ eci pull --dir foo/bar/ lf-edge/eci-nginx:ubuntu-1804-11715
 
 ## Media Types and Annotations
 
-In legacy mode, the `config.mediaType` is `application/vnd.oci.image.config.v1+json` while all layers are `application/vnd.oci.image.layer.v1.tar`. This are the only acceptable types for registries that do not yet support artifactas. 
+The specific standard media types are at [docs/mediatypes.md](./docs/mediatypes.md).
 
-In artifacts mode (the default), the media types are as follows:
+In addition to the types, `eci` _always_ will add annotations to the layer and config in the manifest describing its purpose.
 
-* config: `application/vnd.lfedge.eci.config.v1+json`
-* kernel: `application/vnd.lfedge.eci.kernel.layer.v1.tar`
-* initrd: `application/vnd.lfedge.eci.initrd.layer.v1.tar`
-* disks: disks always have a media type that conforms to their format
-  * raw: `application/vnd.lfedge.disk.layer.v1+raw`
-  * vhd: `application/vnd.lfedge.disk.layer.v1+vhd`
-  * vmdk: `application/vnd.lfedge.disk.layer.v1+vmdk`
-  * iso: `application/vnd.lfedge.disk.layer.v1+iso`
-  * qcow: `application/vnd.lfedge.disk.layer.v1+qcow`
-  * qcow2: `application/vnd.lfedge.disk.layer.v1+qcow2`
-  * ova: `application/vnd.lfedge.disk.layer.v1+ova`
-  * vhdx: `application/vnd.lfedge.disk.layer.v1+vhdx`
-
-In addition to the types, when available via an artifacts-supporting registry, `eci` _always_ will add annotations to the layer describing its purpose.
-The annotations are as follows:
-
-* `org.lfedge.eci.mediaType: <type>` - this will be identical to the mediaType that is provided in the case of an artifacts-supporting registry
-* `org.lfedge.eci.role: <role>` - for the role of this particular layer. Can be one of the following:
-   * `kernel`
-   * `initrd`
-   * `disk-root`
-   * `disk-additional` - for alternate non-root/boot disks
+The specific standard annotations are at [docs/annotations.md](./docs/annotations.md).
 
 ## File Names
 
