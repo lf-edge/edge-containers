@@ -67,6 +67,58 @@ The specific standard annotations are at [docs/annotations.md](./docs/annotation
 
 ECI is highly opinionated about the file names. No matter what names you pass to it, it will give the files particular names. These are listed in [docs/filenames.md](docs/filenames.md).
 
+## Sample Manifest
+
+A sample manifest for an actual pushed image is below. This is a manifest on docker hub, so the media types are the legacy types,
+while the annotations provide the purpose.
+
+```json
+{
+  "schemaVersion": 2,
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:ffb3941df4fe37f22165b124d66e966d93b3dbf2765b736818b57a4516aed94e",
+    "size": 14,
+    "annotations": {
+      "org.lfedge.eci.mediaType": "application/vnd.lfedge.eci.config.v1+json",
+      "org.opencontainers.image.title": "config.json"
+    }
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "digest": "sha256:edeaaff3f1774ad2888673770c6d64097e391bc362d7d6fb34982ddf0efd18cb",
+      "size": 4,
+      "annotations": {
+        "org.lfedge.eci.mediaType": "application/vnd.lfedge.eci.kernel.layer.v1+kernel",
+        "org.lfedge.eci.role": "kernel",
+        "org.opencontainers.image.title": "kernel"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "digest": "sha256:da1464fd7ceaf38ff56043bc1774af4fb5cb83ef5358981d78de0b8be5a6fbcb",
+      "size": 4,
+      "annotations": {
+        "org.lfedge.eci.mediaType": "application/vnd.lfedge.eci.initrd.layer.v1+cpio",
+        "org.lfedge.eci.role": "initrd",
+        "org.opencontainers.image.title": "initrd"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "digest": "sha256:deb055d836e44a1dcf0317b0cacac2dbdd36301f82abf787f7849d3f5b916750",
+      "size": 5,
+      "annotations": {
+        "org.lfedge.eci.mediaType": "application/vnd.lfedge.disk.layer.v1+raw",
+        "org.lfedge.eci.role": "disk-root",
+        "org.opencontainers.image.title": "disk-root-root.raw"
+      }
+    }
+  ]
+}
+```
+
 ## Go Library
 
 The go library is `github.com/lf-edge/edge-containers/pkg/registry`. Docs are available at [godoc.org/github.com/lf-edge/edge-containers/pkg/registry](https://godoc.org/github.com/lf-edge/edge-containers/pkg/registry).
