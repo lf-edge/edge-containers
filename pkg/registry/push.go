@@ -26,7 +26,7 @@ type Pusher struct {
 	Impl func(ctx context.Context, resolver remotes.Resolver, ref string, provider ctrcontent.Provider, descriptors []ocispec.Descriptor, opts ...oras.PushOpt) (ocispec.Descriptor, error)
 }
 
-func (p Pusher) Push(legacy bool, verbose bool, writer io.Writer) (string, error) {
+func (p Pusher) Push(format Format, verbose bool, writer io.Writer) (string, error) {
 	var (
 		desc            ocispec.Descriptor
 		mediaType       string
@@ -68,7 +68,7 @@ func (p Pusher) Push(legacy bool, verbose bool, writer io.Writer) (string, error
 		name = "kernel"
 		customMediaType = MimeTypeECIKernel
 		filepath = p.Artifact.Kernel
-		mediaType = GetLayerMediaType(customMediaType, legacy)
+		mediaType = GetLayerMediaType(customMediaType, format)
 		desc, err = fileStore.Add(name, mediaType, filepath)
 		if err != nil {
 			return "", fmt.Errorf("error adding %s at %s: %v", name, filepath, err)
@@ -84,7 +84,7 @@ func (p Pusher) Push(legacy bool, verbose bool, writer io.Writer) (string, error
 		name = "initrd"
 		customMediaType = MimeTypeECIInitrd
 		filepath = p.Artifact.Initrd
-		mediaType = GetLayerMediaType(customMediaType, legacy)
+		mediaType = GetLayerMediaType(customMediaType, format)
 		desc, err = fileStore.Add(name, mediaType, filepath)
 		if err != nil {
 			return "", fmt.Errorf("error adding %s at %s: %v", name, filepath, err)
@@ -100,7 +100,7 @@ func (p Pusher) Push(legacy bool, verbose bool, writer io.Writer) (string, error
 		customMediaType = TypeToMime[disk.Type]
 		filepath = disk.Path
 		name := fmt.Sprintf("disk-root-%s", path.Base(filepath))
-		mediaType = GetLayerMediaType(customMediaType, legacy)
+		mediaType = GetLayerMediaType(customMediaType, format)
 		desc, err = fileStore.Add(name, mediaType, filepath)
 		if err != nil {
 			return "", fmt.Errorf("error adding %s disk at %s: %v", name, filepath, err)
@@ -116,7 +116,7 @@ func (p Pusher) Push(legacy bool, verbose bool, writer io.Writer) (string, error
 			customMediaType = TypeToMime[disk.Type]
 			filepath = disk.Path
 			name := fmt.Sprintf("disk-%d-%s", i, path.Base(filepath))
-			mediaType = GetLayerMediaType(customMediaType, legacy)
+			mediaType = GetLayerMediaType(customMediaType, format)
 			desc, err = fileStore.Add(name, mediaType, filepath)
 			if err != nil {
 				return "", fmt.Errorf("error adding %s disk at %s: %v", name, filepath, err)
@@ -137,7 +137,7 @@ func (p Pusher) Push(legacy bool, verbose bool, writer io.Writer) (string, error
 		name = "config.json"
 		customMediaType = MimeTypeECIConfig
 		filepath = p.Artifact.Config
-		mediaType = GetConfigMediaType(customMediaType, legacy)
+		mediaType = GetConfigMediaType(customMediaType, format)
 		desc, err = fileStore.Add(name, mediaType, filepath)
 		if err != nil {
 			return "", fmt.Errorf("error adding %s config at %s: %v", name, filepath, err)

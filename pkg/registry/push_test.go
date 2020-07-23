@@ -105,30 +105,30 @@ func TestPush(t *testing.T) {
 	tests := []struct {
 		artifact *registry.Artifact
 		image    string
-		legacy   bool
+		format   registry.Format
 		contents []ocispec.Descriptor
 		digest   string
 		opts     []oras.PushOpt
 		err      error
 	}{
 		// no artifact
-		{nil, testImageName, false, []ocispec.Descriptor{}, "", nil, fmt.Errorf("must have valid Artifact")},
+		{nil, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("must have valid Artifact")},
 		// no image name
-		{&registry.Artifact{}, "", false, []ocispec.Descriptor{}, "", nil, fmt.Errorf("must have valid image ref")},
+		{&registry.Artifact{}, "", registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("must have valid image ref")},
 		// missing kernel file
-		{&registry.Artifact{Kernel: "abcd.kernel"}, testImageName, false, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding kernel")},
+		{&registry.Artifact{Kernel: "abcd.kernel"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding kernel")},
 		// missing initrd file
-		{&registry.Artifact{Initrd: "abcd.initrd"}, testImageName, false, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding initrd")},
+		{&registry.Artifact{Initrd: "abcd.initrd"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding initrd")},
 		// missing config file
-		{&registry.Artifact{Config: "abcd.config"}, testImageName, false, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding config")},
+		{&registry.Artifact{Config: "abcd.config"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding config")},
 		// missing root disk
-		{&registry.Artifact{Root: &registry.Disk{Path: "abcd.diskroot", Type: rootDiskType}}, testImageName, false, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding disk-root")},
+		{&registry.Artifact{Root: &registry.Disk{Path: "abcd.diskroot", Type: rootDiskType}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding disk-root")},
 		// missing additional disk
-		{&registry.Artifact{Disks: []*registry.Disk{{Path: "abcd.diskone", Type: registry.Vmdk}}}, testImageName, false, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding disk-0")},
+		{&registry.Artifact{Disks: []*registry.Disk{{Path: "abcd.diskone", Type: registry.Vmdk}}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding disk-0")},
 		// normal without legacy
-		{validArtifact, testImageName, false, expectedDescriptors, string(desc.Digest), nil, nil},
+		{validArtifact, testImageName, registry.FormatArtifacts, expectedDescriptors, string(desc.Digest), nil, nil},
 		// normal with legacy
-		{validArtifact, testImageName, true, expectedDescriptorsLegacy, string(desc.Digest), nil, nil},
+		{validArtifact, testImageName, registry.FormatLegacy, expectedDescriptorsLegacy, string(desc.Digest), nil, nil},
 	}
 	for i, tt := range tests {
 		// ensure it is called in the right way - this will check the arguments
@@ -140,7 +140,7 @@ func TestPush(t *testing.T) {
 			Image:    tt.image,
 			Impl:     m.Push,
 		}
-		dig, err := pusher.Push(tt.legacy, false, nil)
+		dig, err := pusher.Push(tt.format, false, nil)
 		switch {
 		case (err != nil && tt.err == nil) || (err == nil && tt.err != nil) || (err != nil && tt.err != nil && !strings.HasPrefix(err.Error(), tt.err.Error())):
 			t.Errorf("%d: mismatched errors, actual %v expected %v", i, err, tt.err)

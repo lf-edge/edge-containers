@@ -17,7 +17,7 @@ var (
 	initrdFile string
 	rootFile   string
 	configFile string
-	legacy     bool
+	formatStr  string
 	disks      []string
 )
 
@@ -66,7 +66,19 @@ var pushCmd = &cobra.Command{
 			Artifact: artifact,
 			Image:    image,
 		}
-		hash, err := pusher.Push(legacy, verbose, os.Stdout)
+		// convert the format string into a proper format
+		var format registry.Format
+		switch formatStr {
+		case "artifacts":
+			format = registry.FormatArtifacts
+		case "legacy":
+			format = registry.FormatLegacy
+		case "container":
+			format = registry.FormatContainer
+		default:
+			log.Fatalf("unknown format: %v", formatStr)
+		}
+		hash, err := pusher.Push(format, verbose, os.Stdout)
 		if err != nil {
 			log.Fatalf("error pushing to registry: %v", err)
 		}
@@ -81,7 +93,7 @@ func pushInit() {
 	pushCmd.Flags().StringVar(&rootFile, "root", "", "path to root disk file and type")
 	pushCmd.Flags().StringVar(&configFile, "config", "", "path to ECI manifest config")
 	pushCmd.Flags().StringSliceVar(&disks, "disk", []string{}, "path to additional disk and type, may be invoked multiple times")
-	pushCmd.Flags().BoolVar(&legacy, "legacy", false, "whether to work in legacy mode with registries that do not support OCI Artifacts")
+	pushCmd.Flags().StringVar(&formatStr, "format", "artifacts", "which format to use, one of: artifacts, legacy, container")
 	pushCmd.Flags().BoolVar(&debug, "debug", false, "debug output")
 	pushCmd.Flags().BoolVar(&verbose, "verbose", false, "verbose output")
 }

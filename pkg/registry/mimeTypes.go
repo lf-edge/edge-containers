@@ -40,15 +40,15 @@ func AllMimeTypes() []string {
 	return allTypes[:]
 }
 
-func GetLayerMediaType(actualType string, legacy bool) string {
-	if legacy {
-		return MimeTypeOCIImageLayer
+func GetLayerMediaType(actualType string, format Format) string {
+	if format == FormatArtifacts {
+		return actualType
 	}
-	return actualType
+	return MimeTypeOCIImageLayer
 }
-func GetConfigMediaType(actualType string, legacy bool) string {
-	if legacy {
-		return MimeTypeOCIImageConfig
+func GetConfigMediaType(actualType string, format Format) string {
+	if format == FormatArtifacts {
+		return actualType
 	}
-	return actualType
+	return MimeTypeOCIImageConfig
 }

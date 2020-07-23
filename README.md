@@ -1,11 +1,17 @@
 # ECI Distribution
 
-This repository contains a golang library and CLI for ECI images, to  push to and pull from OCI registries.
+This repository contains a golang library and CLI for VM images, to  push to and pull from OCI registries.
 
 It is inspired directly by [ORAS](https://github.com/deislabs/oras) and leverages it, but is opinionated to the ECI use case.
 
-It uses elements of [OCI Artifacts](http://github.com/opencontainers/artifacts), but can use either standard mime-types and configs, or, where available, leverage full artifacts mime types.
+It uses elements of [OCI Artifacts](http://github.com/opencontainers/artifacts), but can store the images in
+multiple formats:
 
+* `legacy`: standard mime-types and configs
+* `artifacts`: leverage full artifacts mime types
+* `container`: artifacts placed within a filesystem in an OCI container image
+
+In all cases, annotations are used as well.
 
 ## Usage
 
@@ -25,11 +31,18 @@ You can push the image as follows:
 eci push --root path/to/root.img:raw --kernel path/to/kernel --initrd path/to/initrd --disk path/to/disk1:iso --disk path/to/disk2:vmdk ... --config path/to/config lfedge/eci-nginx:ubuntu-1804-11715
 ```
 
-The above assumes that the registry fully supports Artifacts and will use specialized mime types. If you wish to use an existing regstry that does
-not yet support artifacts, pass the `--legacy` flag:
+The above uses the default format `artifacts`, which assumes that the registry fully supports Artifacts
+and will use specialized mime types. If you are using a registry that does
+not yet support artifacts, or simply wish to use one of the other formats, pass the `--format` flag:
 
 ```sh
-eci push --legacy --root path/to/root.img:raw --kernel path/to/kernel --initrd path/to/initrd --disk path/to/disk1:iso --disk path/to/disk2:vmdk ... --config path/to/config lfedge/eci-nginx:ubuntu-1804-11715
+eci push --format legacy --root path/to/root.img:raw --kernel path/to/kernel --initrd path/to/initrd --disk path/to/disk1:iso --disk path/to/disk2:vmdk ... --config path/to/config lfedge/eci-nginx:ubuntu-1804-11715
+```
+
+or
+
+```sh
+eci push --format container --root path/to/root.img:raw --kernel path/to/kernel --initrd path/to/initrd --disk path/to/disk1:iso --disk path/to/disk2:vmdk ... --config path/to/config lfedge/eci-nginx:ubuntu-1804-11715
 ```
 
 The `eci` command will take care of setting the correct mime types and annotations on all of the objects.
@@ -55,6 +68,11 @@ The above will default to placing artifacts in the current directory. To place t
 eci pull --dir foo/bar/ lf-edge/eci-nginx:ubuntu-1804-11715
 ```
 
+The `eci` command knows how to read the manifest and annotations and determine how to extract the data.
+
+Note that _whatever_ format it is in, it can be pulled "as is" by docker, containerd, go-containerregistry,
+img or any other tool that knows how to pull OCI images.
+
 ## Media Types and Annotations
 
 The specific standard media types are at [docs/mediatypes.md](./docs/mediatypes.md).
@@ -69,8 +87,8 @@ ECI is highly opinionated about the file names. No matter what names you pass to
 
 ## Sample Manifest
 
-A sample manifest for an actual pushed image is below. This is a manifest on docker hub, so the media types are the legacy types,
-while the annotations provide the purpose.
+A sample manifest for an actual pushed image is below. This is a manifest on docker hub, so the media types
+are the legacy types, while the annotations provide the purpose.
 
 ```json
 {
