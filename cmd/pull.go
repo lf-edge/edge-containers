@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/lf-edge/edge-containers/pkg/registry"
+	"github.com/lf-edge/edge-containers/pkg/registry/target"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +31,13 @@ var pullCmd = &cobra.Command{
 		puller := registry.Puller{
 			Image: image,
 		}
-		desc, err := puller.Pull(pullDir, verbose, os.Stdout, reg)
+		var pullTarget target.Target
+		if reg == "" {
+			pullTarget = target.Registry{}
+		} else {
+			pullTarget = target.NewDirectory(reg)
+		}
+		desc, err := puller.Pull(pullDir, verbose, os.Stdout, pullTarget)
 		if err != nil {
 			log.Fatalf("error pulling from registry: %v", err)
 		}

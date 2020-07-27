@@ -12,13 +12,12 @@ import (
 	"sync"
 	"time"
 
-	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
+	"github.com/lf-edge/edge-containers/pkg/registry/target"
 	"github.com/lf-edge/edge-containers/pkg/store"
 	"github.com/lf-edge/edge-containers/pkg/tgz"
 
 	ctrcontent "github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/remotes"
-	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
 
@@ -46,12 +45,9 @@ type Pusher struct {
 // an io.Writer for sending debug output, ConfigOpts to configure how the image should be configured,
 // and a target.
 //
-// The target by default is "", meaning, whatever is built into the image reference. For
-// example, docker.io/library/alpine will go to docker hub. You can provide a target directory,
-// which will cause it to push files to the local filesystem, rather than docker hub.
-//
-// The format for the target parameters is expected to change rapidly.
-func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts ConfigOpts, target string) (string, error) {
+// The target determines the target type. target.Registry just uses the default registry,
+// while target.Directory uses a local directory.
+func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts ConfigOpts, target target.Target) (string, error) {
 	var (
 		desc            ocispec.Descriptor
 		mediaType       string
@@ -76,21 +72,9 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 	}
 
 	ctx := context.Background()
-	var resolver remotes.Resolver
-	if target != "" {
-		resolver, err = ecresolver.NewDirectory(target)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		cli, err := auth.NewClient()
-		if err != nil {
-			return "", fmt.Errorf("unable to get authenticating client to registry: %v", err)
-		}
-		resolver, err = cli.Resolver(ctx)
-		if err != nil {
-			return "", fmt.Errorf("unable to get resolver for registry: %v", err)
-		}
+	resolver, err := target.Resolver(ctx)
+	if err != nil {
+		return "", err
 	}
 
 	// Go through each file type in the registry and add the appropriate file type and path, along with annotations

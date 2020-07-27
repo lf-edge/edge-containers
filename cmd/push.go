@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/lf-edge/edge-containers/pkg/registry"
+	"github.com/lf-edge/edge-containers/pkg/registry/target"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -81,11 +82,17 @@ var pushCmd = &cobra.Command{
 		default:
 			log.Fatalf("unknown format: %v", formatStr)
 		}
+		var pushTarget target.Target
+		if reg == "" {
+			pushTarget = target.Registry{}
+		} else {
+			pushTarget = target.NewDirectory(reg)
+		}
 		hash, err := pusher.Push(format, verbose, os.Stdout, registry.ConfigOpts{
 			Author:       author,
 			OS:           osname,
 			Architecture: arch,
-		}, reg)
+		}, pushTarget)
 		if err != nil {
 			log.Fatalf("error pushing to registry: %v", err)
 		}
