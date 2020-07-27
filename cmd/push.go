@@ -19,6 +19,9 @@ var (
 	configFile string
 	formatStr  string
 	disks      []string
+	author     string
+	osname     string
+	arch       string
 )
 
 var pushCmd = &cobra.Command{
@@ -78,7 +81,11 @@ var pushCmd = &cobra.Command{
 		default:
 			log.Fatalf("unknown format: %v", formatStr)
 		}
-		hash, err := pusher.Push(format, verbose, os.Stdout)
+		hash, err := pusher.Push(format, verbose, os.Stdout, registry.ConfigOpts{
+			Author:       author,
+			OS:           osname,
+			Architecture: arch,
+		})
 		if err != nil {
 			log.Fatalf("error pushing to registry: %v", err)
 		}
@@ -92,6 +99,9 @@ func pushInit() {
 	pushCmd.Flags().StringVar(&initrdFile, "initrd", "", "path to initrd file, optional")
 	pushCmd.Flags().StringVar(&rootFile, "root", "", "path to root disk file and type")
 	pushCmd.Flags().StringVar(&configFile, "config", "", "path to ECI manifest config")
+	pushCmd.Flags().StringVar(&author, "author", registry.DefaultAuthor, "author to use in generated config, if config not provided")
+	pushCmd.Flags().StringVar(&osname, "OS", registry.DefaultOS, "os to use in generated config, if config not provided")
+	pushCmd.Flags().StringVar(&arch, "arch", registry.DefaultArch, "arch to use in generated config, if config not provided")
 	pushCmd.Flags().StringSliceVar(&disks, "disk", []string{}, "path to additional disk and type, may be invoked multiple times")
 	pushCmd.Flags().StringVar(&formatStr, "format", "artifacts", "which format to use, one of: artifacts, legacy, container")
 	pushCmd.Flags().BoolVar(&debug, "debug", false, "debug output")

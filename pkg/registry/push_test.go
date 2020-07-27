@@ -133,14 +133,15 @@ func TestPush(t *testing.T) {
 	for i, tt := range tests {
 		// ensure it is called in the right way - this will check the arguments
 		m := new(MockedPush)
-		m.On("Push", mock.Anything, mock.Anything, tt.image, mock.Anything, tt.contents, tt.opts).Return(desc, nil)
+		// TODO: the last argument here should check that the config is created
+		m.On("Push", mock.Anything, mock.Anything, tt.image, mock.Anything, tt.contents, mock.MatchedBy(func(opts []oras.PushOpt) bool { return len(opts) == 1 })).Return(desc, nil)
 		// create the Pusher
 		pusher := registry.Pusher{
 			Artifact: tt.artifact,
 			Image:    tt.image,
 			Impl:     m.Push,
 		}
-		dig, err := pusher.Push(tt.format, false, nil)
+		dig, err := pusher.Push(tt.format, false, nil, registry.ConfigOpts{})
 		switch {
 		case (err != nil && tt.err == nil) || (err == nil && tt.err != nil) || (err != nil && tt.err != nil && !strings.HasPrefix(err.Error(), tt.err.Error())):
 			t.Errorf("%d: mismatched errors, actual %v expected %v", i, err, tt.err)
