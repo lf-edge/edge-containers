@@ -30,7 +30,7 @@ var pullCmd = &cobra.Command{
 		puller := registry.Puller{
 			Image: image,
 		}
-		desc, err := puller.Pull(pullDir, verbose, os.Stdout)
+		desc, err := puller.Pull(pullDir, verbose, os.Stdout, reg)
 		if err != nil {
 			log.Fatalf("error pulling from registry: %v", err)
 		}

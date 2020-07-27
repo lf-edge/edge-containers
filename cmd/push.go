@@ -85,12 +85,15 @@ var pushCmd = &cobra.Command{
 			Author:       author,
 			OS:           osname,
 			Architecture: arch,
-		})
+		}, reg)
 		if err != nil {
 			log.Fatalf("error pushing to registry: %v", err)
 		}
-		fmt.Printf("Pushed image %s with digest %s\n", image, hash)
-
+		location := ""
+		if reg != "" {
+			location = fmt.Sprintf("to %s ", reg)
+		}
+		fmt.Printf("Pushed image %s %swith digest %s\n", image, location, hash)
 	},
 }
 
