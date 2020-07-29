@@ -47,7 +47,7 @@ join_platforms = $(subst $(space),$(comma),$(call prefix_linux,$(strip $1)))
 export GO111MODULE=on
 DIST_DIR=./dist/bin
 DIST_BINARY = $(DIST_DIR)/$(BINARY)-$(OS)-$(ARCH)
-BUILD_CMD = GOOS=$(OS) GOARCH=$(ARCH)
+BUILD_CMD = CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH)
 ifdef DOCKERBUILD
 BUILD_CMD = docker run --rm \
                 -e GOARCH=$(ARCH) \
