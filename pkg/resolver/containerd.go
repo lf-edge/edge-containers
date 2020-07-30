@@ -65,6 +65,10 @@ func (d *Containerd) Pusher(ctx context.Context, ref string) (remotes.Pusher, er
 	return containerdPusher{ref, d.client, d.namespace}, nil
 }
 
+func (d *Containerd) Finalize() error {
+	return nil
+}
+
 type containerdFetcher struct {
 	ref       string
 	client    *containerd.Client

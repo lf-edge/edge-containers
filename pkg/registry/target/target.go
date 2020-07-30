@@ -3,9 +3,9 @@ package target
 import (
 	"context"
 
-	"github.com/containerd/containerd/remotes"
+	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
 )
 
 type Target interface {
-	Resolver(ctx context.Context) (remotes.Resolver, error)
+	Resolver(ctx context.Context) (ecresolver.ResolverCloser, error)
 }

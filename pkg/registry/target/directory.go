@@ -4,8 +4,6 @@ import (
 	"context"
 
 	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
-
-	"github.com/containerd/containerd/remotes"
 )
 
 // Directory push to and pull from a local directory.
@@ -19,6 +17,6 @@ func NewDirectory(dir string) *Directory {
 	}
 }
 
-func (d *Directory) Resolver(ctx context.Context) (remotes.Resolver, error) {
+func (d *Directory) Resolver(ctx context.Context) (ecresolver.ResolverCloser, error) {
 	return ecresolver.NewDirectory(d.dir)
 }

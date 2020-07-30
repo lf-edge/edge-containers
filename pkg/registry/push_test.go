@@ -142,7 +142,7 @@ func TestPush(t *testing.T) {
 			Image:    tt.image,
 			Impl:     m.Push,
 		}
-		dig, err := pusher.Push(tt.format, false, nil, registry.ConfigOpts{}, target.Registry{})
+		dig, err := pusher.Push(tt.format, false, nil, registry.ConfigOpts{}, &target.Registry{})
 		switch {
 		case (err != nil && tt.err == nil) || (err == nil && tt.err != nil) || (err != nil && tt.err != nil && !strings.HasPrefix(err.Error(), tt.err.Error())):
 			t.Errorf("%d: mismatched errors, actual %v expected %v", i, err, tt.err)

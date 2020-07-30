@@ -94,6 +94,10 @@ func (d *Directory) Pusher(ctx context.Context, ref string) (remotes.Pusher, err
 	return directoryPusher{ref, d.dir}, nil
 }
 
+func (d *Directory) Finalize() error {
+	return nil
+}
+
 type directoryFetcher struct {
 	ref string
 	dir string

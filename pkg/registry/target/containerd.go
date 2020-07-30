@@ -4,8 +4,6 @@ import (
 	"context"
 
 	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
-
-	"github.com/containerd/containerd/remotes"
 )
 
 // Containerd push to and pull from containerd
@@ -21,6 +19,6 @@ func NewContainerd(address, namespace string) *Containerd {
 	}
 }
 
-func (d *Containerd) Resolver(ctx context.Context) (remotes.Resolver, error) {
+func (d *Containerd) Resolver(ctx context.Context) (ecresolver.ResolverCloser, error) {
 	return ecresolver.NewContainerd(d.address, d.namespace)
 }

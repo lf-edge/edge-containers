@@ -265,7 +265,10 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 	if err != nil {
 		return "", err
 	}
-	return string(desc.Digest), nil
+	if err := resolver.Finalize(); err != nil {
+		return desc.Digest.String(), fmt.Errorf("failed to finalize: %v", err)
+	}
+	return desc.Digest.String(), nil
 }
 
 func pushStatusTrack(writer io.Writer) images.Handler {

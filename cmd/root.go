@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		switch {
 		case remote == "":
-			remoteTarget = target.Registry{}
+			remoteTarget = &target.Registry{}
 		case strings.HasPrefix(remote, "containerd:"):
 			remoteTarget = target.NewContainerd(strings.Replace(remote, "containerd:", "", 1), ctrNamespace)
 		case strings.HasPrefix(remote, "file://"):
