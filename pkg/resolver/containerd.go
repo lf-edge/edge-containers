@@ -38,6 +38,7 @@ type Containerd struct {
 	client    *containerd.Client
 	namespace string
 	pusher    *containerdPusher
+	done      func(context.Context) error
 }
 
 func NewContainerd(ctx context.Context, address, namespace string) (context.Context, *Containerd, error) {
@@ -48,7 +49,11 @@ func NewContainerd(ctx context.Context, address, namespace string) (context.Cont
 	if namespace == "" {
 		namespace = "default"
 	}
-	return ctx, &Containerd{client: client, namespace: namespace}, nil
+	ctx, done, err := client.WithLease(namespaces.WithNamespace(ctx, namespace))
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get lease: %v", err)
+	}
+	return ctx, &Containerd{client: client, namespace: namespace, done: done}, nil
 }
 
 func (d *Containerd) Resolve(ctx context.Context, ref string) (name string, desc ocispec.Descriptor, err error) {
@@ -58,7 +63,7 @@ func (d *Containerd) Resolve(ctx context.Context, ref string) (name string, desc
 
 	// get our image
 	is := d.client.ImageService()
-	image, err := is.Get(namespaces.WithNamespace(ctx, d.namespace), ref)
+	image, err := is.Get(ctx, ref)
 	if err != nil {
 		return "", ocispec.Descriptor{}, err
 	}
@@ -66,35 +71,30 @@ func (d *Containerd) Resolve(ctx context.Context, ref string) (name string, desc
 }
 
 func (d Containerd) Fetcher(ctx context.Context, ref string) (remotes.Fetcher, error) {
-	return containerdFetcher{ref, d.client, d.namespace}, nil
+	return containerdFetcher{ref, d.client}, nil
 }
 
 func (d *Containerd) Pusher(ctx context.Context, ref string) (remotes.Pusher, error) {
-	ctx, done, err := d.client.WithLease(namespaces.WithNamespace(ctx, d.namespace))
-	if err != nil {
-		return nil, fmt.Errorf("unable to get lease: %v", err)
-	}
-	p := containerdPusher{ref, d.client, d.namespace, done}
+	p := containerdPusher{ref, d.client}
 	d.pusher = &p
 	return p, nil
 }
 
 func (d *Containerd) Finalize(ctx context.Context) error {
-	if d.pusher != nil {
-		d.pusher.Finalize(ctx)
+	if d.done != nil {
+		d.done(ctx)
 	}
 	return nil
 }
 
 type containerdFetcher struct {
-	ref       string
-	client    *containerd.Client
-	namespace string
+	ref    string
+	client *containerd.Client
 }
 
 func (d containerdFetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
 	cs := d.client.ContentStore()
-	reader, err := cs.ReaderAt(namespaces.WithNamespace(ctx, d.namespace), desc)
+	reader, err := cs.ReaderAt(ctx, desc)
 	if err != nil {
 		return nil, err
 	}
@@ -119,15 +119,13 @@ func (c containerdReader) Read(p []byte) (n int, err error) {
 }
 
 type containerdPusher struct {
-	ref       string
-	client    *containerd.Client
-	namespace string
-	done      func(context.Context) error
+	ref    string
+	client *containerd.Client
 }
 
 func (d containerdPusher) Push(ctx context.Context, desc ocispec.Descriptor) (content.Writer, error) {
 	cs := d.client.ContentStore()
-	writer, err := content.OpenWriter(namespaces.WithNamespace(ctx, d.namespace), cs, content.WithDescriptor(desc), content.WithRef(desc.Digest.String()))
+	writer, err := content.OpenWriter(ctx, cs, content.WithDescriptor(desc), content.WithRef(desc.Digest.String()))
 	if err != nil {
 		return nil, err
 	}
@@ -139,26 +137,17 @@ func (d containerdPusher) Push(ctx context.Context, desc ocispec.Descriptor) (co
 		cache = make([]byte, 0)
 	}
 	return &containerdWriter{
-		writer:    writer,
-		client:    d.client,
-		namespace: d.namespace,
-		desc:      desc,
-		ref:       d.ref,
-		cache:     cache,
+		writer: writer,
+		client: d.client,
+		desc:   desc,
+		ref:    d.ref,
+		cache:  cache,
 	}, nil
-}
-
-func (d containerdPusher) Finalize(ctx context.Context) error {
-	if d.done != nil {
-		d.done(ctx)
-	}
-	return nil
 }
 
 type containerdWriter struct {
 	writer    content.Writer
 	client    *containerd.Client
-	namespace string
 	ref       string
 	desc      ocispec.Descriptor
 	committed bool
@@ -182,7 +171,7 @@ func (c *containerdWriter) Commit(ctx context.Context, size int64, expected dige
 	if c.committed {
 		return nil
 	}
-	if err := c.writer.Commit(namespaces.WithNamespace(ctx, c.namespace), size, expected); err != nil {
+	if err := c.writer.Commit(ctx, size, expected); err != nil {
 		return err
 	}
 	// when we commit, we also need to write the image and the various parentage tags
@@ -191,7 +180,7 @@ func (c *containerdWriter) Commit(ctx context.Context, size int64, expected dige
 	switch c.desc.MediaType {
 	case images.MediaTypeDockerSchema2Manifest, ocispec.MediaTypeImageManifest,
 		images.MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
-		existingImage, err := is.Get(namespaces.WithNamespace(ctx, c.namespace), c.ref)
+		existingImage, err := is.Get(ctx, c.ref)
 		// TODO: should differentiate between communication error and image-not-there error
 		if err != nil || existingImage.Target.Digest.String() == "" {
 			image := images.Image{
@@ -201,7 +190,7 @@ func (c *containerdWriter) Commit(ctx context.Context, size int64, expected dige
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Time{},
 			}
-			_, err = is.Create(namespaces.WithNamespace(ctx, c.namespace), image)
+			_, err = is.Create(ctx, image)
 		} else {
 			image := images.Image{
 				Name:      c.ref,
@@ -209,7 +198,7 @@ func (c *containerdWriter) Commit(ctx context.Context, size int64, expected dige
 				Target:    c.desc,
 				UpdatedAt: time.Time{},
 			}
-			_, err = is.Update(namespaces.WithNamespace(ctx, c.namespace), image)
+			_, err = is.Update(ctx, image)
 		}
 		if err != nil {
 			return err
@@ -228,7 +217,7 @@ func (c *containerdWriter) Commit(ctx context.Context, size int64, expected dige
 			Digest: digest.Digest(c.desc.Digest),
 			Labels: labels,
 		}
-		if _, err := c.client.ContentStore().Update(namespaces.WithNamespace(ctx, c.namespace), updatedContentInfo, updatedFields...); err != nil {
+		if _, err := c.client.ContentStore().Update(ctx, updatedContentInfo, updatedFields...); err != nil {
 			return err
 		}
 	}
