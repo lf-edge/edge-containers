@@ -249,6 +249,7 @@ func getChildRefs(b []byte, mediaType string) (labels map[string]string, err err
 		if err := json.Unmarshal(b, &manifest); err != nil {
 			return nil, fmt.Errorf("did not have valid manifest: %v", err)
 		}
+		labels = map[string]string{}
 		for i, l := range manifest.Layers {
 			labels[fmt.Sprintf("%s.%d", containerdGCRef, i)] = l.Digest.String()
 		}
@@ -258,6 +259,7 @@ func getChildRefs(b []byte, mediaType string) (labels map[string]string, err err
 		if err := json.Unmarshal(b, &index); err != nil {
 			return nil, fmt.Errorf("did not have valid index: %v", err)
 		}
+		labels = map[string]string{}
 		for i, l := range index.Manifests {
 			labels[fmt.Sprintf("%s.%d", containerdGCRef, i)] = l.Digest.String()
 		}
