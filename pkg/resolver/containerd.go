@@ -27,20 +27,28 @@ const (
 	containerdGCRef = "containerd.io/gc.ref.content"
 )
 
+// Containerd resolver to push to/pull from containerd.
+// Due to an inability to know when a pusher is complete,
+// we complete here on the Containerd resolver, which means
+// this should be used exactly once for Pusher, and then discarded,
+// as finalize will be called.
+// See https://github.com/deislabs/oras/issues/172
+// When the above is fixed, we can do better with this.
 type Containerd struct {
 	client    *containerd.Client
 	namespace string
+	pusher    *containerdPusher
 }
 
-func NewContainerd(address, namespace string) (*Containerd, error) {
+func NewContainerd(ctx context.Context, address, namespace string) (context.Context, *Containerd, error) {
 	client, err := containerd.New(address)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if namespace == "" {
 		namespace = "default"
 	}
-	return &Containerd{client: client, namespace: namespace}, nil
+	return ctx, &Containerd{client: client, namespace: namespace}, nil
 }
 
 func (d *Containerd) Resolve(ctx context.Context, ref string) (name string, desc ocispec.Descriptor, err error) {
@@ -62,20 +70,23 @@ func (d Containerd) Fetcher(ctx context.Context, ref string) (remotes.Fetcher, e
 }
 
 func (d *Containerd) Pusher(ctx context.Context, ref string) (remotes.Pusher, error) {
-	return containerdPusher{ref, d.client, d.namespace}, nil
+	ctx, done, err := d.client.WithLease(namespaces.WithNamespace(ctx, d.namespace))
+	if err != nil {
+		return nil, fmt.Errorf("unable to get lease: %v", err)
+	}
+	p := containerdPusher{ref, d.client, d.namespace, done}
+	d.pusher = &p
+	return p, nil
 }
 
-func (d *Containerd) Finalize() error {
+func (d *Containerd) Finalize(ctx context.Context) error {
+	if d.pusher != nil {
+		d.pusher.Finalize(ctx)
+	}
 	return nil
 }
 
 type containerdFetcher struct {
-	ref       string
-	client    *containerd.Client
-	namespace string
-}
-
-type containerdPusher struct {
 	ref       string
 	client    *containerd.Client
 	namespace string
@@ -107,6 +118,13 @@ func (c containerdReader) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+type containerdPusher struct {
+	ref       string
+	client    *containerd.Client
+	namespace string
+	done      func(context.Context) error
+}
+
 func (d containerdPusher) Push(ctx context.Context, desc ocispec.Descriptor) (content.Writer, error) {
 	cs := d.client.ContentStore()
 	writer, err := content.OpenWriter(namespaces.WithNamespace(ctx, d.namespace), cs, content.WithDescriptor(desc), content.WithRef(desc.Digest.String()))
@@ -128,6 +146,13 @@ func (d containerdPusher) Push(ctx context.Context, desc ocispec.Descriptor) (co
 		ref:       d.ref,
 		cache:     cache,
 	}, nil
+}
+
+func (d containerdPusher) Finalize(ctx context.Context) error {
+	if d.done != nil {
+		d.done(ctx)
+	}
+	return nil
 }
 
 type containerdWriter struct {

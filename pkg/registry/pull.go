@@ -39,11 +39,10 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, target target.
 		p.Impl = oras.Pull
 	}
 
-	ctx := context.Background()
 	var (
 		err error
 	)
-	resolver, err := target.Resolver(ctx)
+	ctx, resolver, err := target.Resolver(context.Background())
 	if err != nil {
 		return nil, err
 	}

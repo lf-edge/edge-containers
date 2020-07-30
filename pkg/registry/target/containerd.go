@@ -19,6 +19,6 @@ func NewContainerd(address, namespace string) *Containerd {
 	}
 }
 
-func (d *Containerd) Resolver(ctx context.Context) (ecresolver.ResolverCloser, error) {
-	return ecresolver.NewContainerd(d.address, d.namespace)
+func (d *Containerd) Resolver(ctx context.Context) (context.Context, ecresolver.ResolverCloser, error) {
+	return ecresolver.NewContainerd(ctx, d.address, d.namespace)
 }

@@ -40,12 +40,12 @@ type Directory struct {
 	dir string
 }
 
-func NewDirectory(dir string) (*Directory, error) {
+func NewDirectory(ctx context.Context, dir string) (context.Context, *Directory, error) {
 	// make sure it exists
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("could not create directory %s: %v", dir, err)
+		return ctx, nil, fmt.Errorf("could not create directory %s: %v", dir, err)
 	}
-	return &Directory{dir: dir}, nil
+	return ctx, &Directory{dir: dir}, nil
 }
 
 func (d *Directory) Resolve(ctx context.Context, ref string) (name string, desc ocispec.Descriptor, err error) {
@@ -94,7 +94,7 @@ func (d *Directory) Pusher(ctx context.Context, ref string) (remotes.Pusher, err
 	return directoryPusher{ref, d.dir}, nil
 }
 
-func (d *Directory) Finalize() error {
+func (d *Directory) Finalize(ctx context.Context) error {
 	return nil
 }
 

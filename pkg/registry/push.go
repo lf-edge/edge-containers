@@ -71,8 +71,7 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		p.Impl = oras.Push
 	}
 
-	ctx := context.Background()
-	resolver, err := target.Resolver(ctx)
+	ctx, resolver, err := target.Resolver(context.Background())
 	if err != nil {
 		return "", err
 	}
@@ -265,7 +264,7 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 	if err != nil {
 		return "", err
 	}
-	if err := resolver.Finalize(); err != nil {
+	if err := resolver.Finalize(ctx); err != nil {
 		return desc.Digest.String(), fmt.Errorf("failed to finalize: %v", err)
 	}
 	return desc.Digest.String(), nil

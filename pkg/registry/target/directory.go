@@ -17,6 +17,6 @@ func NewDirectory(dir string) *Directory {
 	}
 }
 
-func (d *Directory) Resolver(ctx context.Context) (ecresolver.ResolverCloser, error) {
-	return ecresolver.NewDirectory(d.dir)
+func (d *Directory) Resolver(ctx context.Context) (context.Context, ecresolver.ResolverCloser, error) {
+	return ecresolver.NewDirectory(ctx, d.dir)
 }

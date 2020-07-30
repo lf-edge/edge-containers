@@ -18,18 +18,18 @@ type Registry struct {
 	remotes.Resolver
 }
 
-func NewRegistry(ctx context.Context) (*Registry, error) {
+func NewRegistry(ctx context.Context) (context.Context, *Registry, error) {
 	cli, err := auth.NewClient()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get authenticating client to registry: %v", err)
+		return nil, nil, fmt.Errorf("unable to get authenticating client to registry: %v", err)
 	}
 	resolver, err := cli.Resolver(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get resolver for registry: %v", err)
+		return nil, nil, fmt.Errorf("unable to get resolver for registry: %v", err)
 	}
-	return &Registry{Resolver: resolver}, nil
+	return ctx, &Registry{Resolver: resolver}, nil
 }
 
-func (r *Registry) Finalize() error {
+func (r *Registry) Finalize(ctx context.Context) error {
 	return nil
 }

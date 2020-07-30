@@ -7,5 +7,5 @@ import (
 )
 
 type Target interface {
-	Resolver(ctx context.Context) (ecresolver.ResolverCloser, error)
+	Resolver(ctx context.Context) (context.Context, ecresolver.ResolverCloser, error)
 }

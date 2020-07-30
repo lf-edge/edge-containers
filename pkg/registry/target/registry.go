@@ -11,6 +11,6 @@ import (
 type Registry struct {
 }
 
-func (r *Registry) Resolver(ctx context.Context) (ecresolver.ResolverCloser, error) {
+func (r *Registry) Resolver(ctx context.Context) (context.Context, ecresolver.ResolverCloser, error) {
 	return ecresolver.NewRegistry(ctx)
 }
