@@ -8,6 +8,8 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -19,6 +21,10 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+)
+
+const (
+	containerdGCRef = "containerd.io/gc.ref.content"
 )
 
 type Containerd struct {
@@ -103,38 +109,39 @@ func (d containerdPusher) Push(ctx context.Context, desc ocispec.Descriptor) (co
 	if err != nil {
 		return nil, err
 	}
-	var isManifest bool
+	// if it is a manifest or index, we will cache the data
+	var cache []byte
 	switch desc.MediaType {
-	case images.MediaTypeDockerSchema2Manifest, images.MediaTypeDockerSchema2ManifestList,
-		ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex:
-		isManifest = true
+	case images.MediaTypeDockerSchema2Manifest, ocispec.MediaTypeImageManifest,
+		images.MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
+		cache = make([]byte, 0)
 	}
-	return containerdWriter{
-		writer:     writer,
-		client:     d.client,
-		namespace:  d.namespace,
-		desc:       desc,
-		isManifest: isManifest,
-		ref:        d.ref,
+	return &containerdWriter{
+		writer:    writer,
+		client:    d.client,
+		namespace: d.namespace,
+		desc:      desc,
+		ref:       d.ref,
+		cache:     cache,
 	}, nil
 }
 
 type containerdWriter struct {
-	writer     content.Writer
-	client     *containerd.Client
-	namespace  string
-	ref        string
-	isManifest bool
-	desc       ocispec.Descriptor
-	committed  bool
+	writer    content.Writer
+	client    *containerd.Client
+	namespace string
+	ref       string
+	desc      ocispec.Descriptor
+	committed bool
+	cache     []byte
 }
 
 // Digest may return empty digest or panics until committed.
-func (c containerdWriter) Digest() digest.Digest {
+func (c *containerdWriter) Digest() digest.Digest {
 	return c.desc.Digest
 }
 
-func (c containerdWriter) Close() error {
+func (c *containerdWriter) Close() error {
 	return c.writer.Close()
 }
 
@@ -142,7 +149,7 @@ func (c containerdWriter) Close() error {
 // size and expected can be zero-value when unknown.
 // Commit always closes the writer, even on error.
 // ErrAlreadyExists aborts the writer.
-func (c containerdWriter) Commit(ctx context.Context, size int64, expected digest.Digest, opts ...content.Opt) error {
+func (c *containerdWriter) Commit(ctx context.Context, size int64, expected digest.Digest, opts ...content.Opt) error {
 	if c.committed {
 		return nil
 	}
@@ -150,8 +157,10 @@ func (c containerdWriter) Commit(ctx context.Context, size int64, expected diges
 		return err
 	}
 	// when we commit, we also need to write the image and the various parentage tags
-	if c.isManifest {
-		is := c.client.ImageService()
+	is := c.client.ImageService()
+
+	switch c.desc.MediaType {
+	case images.MediaTypeDockerSchema2Manifest, ocispec.MediaTypeImageManifest:
 		existingImage, err := is.Get(namespaces.WithNamespace(ctx, c.namespace), c.ref)
 		// TODO: should differentiate between communication error and image-not-there error
 		if err != nil || existingImage.Target.Digest.String() == "" {
@@ -175,19 +184,49 @@ func (c containerdWriter) Commit(ctx context.Context, size int64, expected diges
 		if err != nil {
 			return err
 		}
+		// add GC prevention tags
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(c.cache, &manifest); err != nil {
+			return fmt.Errorf("did not have valid manifest: %v", err)
+		}
+		labels := map[string]string{}
+		for i, l := range manifest.Layers {
+			labels[fmt.Sprintf("%s.%d", containerdGCRef, i)] = l.Digest.String()
+		}
+		i := len(manifest.Layers)
+		labels[fmt.Sprintf("%s.%d", containerdGCRef, i)] = manifest.Config.Digest.String()
+		updatedFields := make([]string, 0)
+		for k := range labels {
+			updatedFields = append(updatedFields, fmt.Sprintf("labels.%s", k))
+		}
+		updatedContentInfo := content.Info{
+			Digest: digest.Digest(c.desc.Digest),
+			Labels: labels,
+		}
+		if _, err := c.client.ContentStore().Update(namespaces.WithNamespace(ctx, c.namespace), updatedContentInfo, updatedFields...); err != nil {
+			return err
+		}
+		return nil
+
+	case images.MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
 	}
 	c.committed = true
+	// clear the cache
+	c.cache = nil
 	return nil
 }
 
 // Status returns the current state of write
-func (c containerdWriter) Status() (content.Status, error) {
+func (c *containerdWriter) Status() (content.Status, error) {
 	return c.writer.Status()
 }
 
-func (c containerdWriter) Truncate(size int64) error {
+func (c *containerdWriter) Truncate(size int64) error {
 	return c.writer.Truncate(size)
 }
-func (c containerdWriter) Write(p []byte) (n int, err error) {
+func (c *containerdWriter) Write(p []byte) (n int, err error) {
+	if c.cache != nil {
+		c.cache = append(c.cache, p...)
+	}
 	return c.writer.Write(p)
 }
