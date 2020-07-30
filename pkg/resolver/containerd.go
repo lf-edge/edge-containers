@@ -160,7 +160,8 @@ func (c *containerdWriter) Commit(ctx context.Context, size int64, expected dige
 	is := c.client.ImageService()
 
 	switch c.desc.MediaType {
-	case images.MediaTypeDockerSchema2Manifest, ocispec.MediaTypeImageManifest:
+	case images.MediaTypeDockerSchema2Manifest, ocispec.MediaTypeImageManifest,
+		images.MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
 		existingImage, err := is.Get(namespaces.WithNamespace(ctx, c.namespace), c.ref)
 		// TODO: should differentiate between communication error and image-not-there error
 		if err != nil || existingImage.Target.Digest.String() == "" {
@@ -185,16 +186,11 @@ func (c *containerdWriter) Commit(ctx context.Context, size int64, expected dige
 			return err
 		}
 		// add GC prevention tags
-		var manifest ocispec.Manifest
-		if err := json.Unmarshal(c.cache, &manifest); err != nil {
-			return fmt.Errorf("did not have valid manifest: %v", err)
+		labels, err := getChildRefs(c.cache, c.desc.MediaType)
+		if err != nil {
+			return err
 		}
-		labels := map[string]string{}
-		for i, l := range manifest.Layers {
-			labels[fmt.Sprintf("%s.%d", containerdGCRef, i)] = l.Digest.String()
-		}
-		i := len(manifest.Layers)
-		labels[fmt.Sprintf("%s.%d", containerdGCRef, i)] = manifest.Config.Digest.String()
+
 		updatedFields := make([]string, 0)
 		for k := range labels {
 			updatedFields = append(updatedFields, fmt.Sprintf("labels.%s", k))
@@ -206,9 +202,6 @@ func (c *containerdWriter) Commit(ctx context.Context, size int64, expected dige
 		if _, err := c.client.ContentStore().Update(namespaces.WithNamespace(ctx, c.namespace), updatedContentInfo, updatedFields...); err != nil {
 			return err
 		}
-		return nil
-
-	case images.MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
 	}
 	c.committed = true
 	// clear the cache
@@ -229,4 +222,27 @@ func (c *containerdWriter) Write(p []byte) (n int, err error) {
 		c.cache = append(c.cache, p...)
 	}
 	return c.writer.Write(p)
+}
+
+func getChildRefs(b []byte, mediaType string) (labels map[string]string, err error) {
+	switch mediaType {
+	case images.MediaTypeDockerSchema2Manifest, ocispec.MediaTypeImageManifest:
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(b, &manifest); err != nil {
+			return nil, fmt.Errorf("did not have valid manifest: %v", err)
+		}
+		for i, l := range manifest.Layers {
+			labels[fmt.Sprintf("%s.%d", containerdGCRef, i)] = l.Digest.String()
+		}
+		labels[fmt.Sprintf("%s.%d", containerdGCRef, len(manifest.Layers))] = manifest.Config.Digest.String()
+	case images.MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
+		var index ocispec.Index
+		if err := json.Unmarshal(b, &index); err != nil {
+			return nil, fmt.Errorf("did not have valid index: %v", err)
+		}
+		for i, l := range index.Manifests {
+			labels[fmt.Sprintf("%s.%d", containerdGCRef, i)] = l.Digest.String()
+		}
+	}
+	return labels, err
 }
