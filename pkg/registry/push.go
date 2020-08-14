@@ -84,7 +84,13 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 	multiStore.AddStore(fileStore, memStore)
 
 	// if we have the container format, we need to create tgz layers
-	var tmpDir string
+	var (
+		tmpDir       string
+		labels       = map[string]string{}
+		pushContents = []ocispec.Descriptor{}
+		layers       = []digest.Digest{}
+		layerHash    digest.Digest
+	)
 
 	if format == FormatContainer {
 		tmpDir, err = ioutil.TempDir("", "edge-containers")
@@ -94,23 +100,22 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		defer os.RemoveAll(tmpDir)
 	}
 
-	labels := map[string]string{}
-
-	pushContents := []ocispec.Descriptor{}
-
 	if p.Artifact.Kernel != "" {
 		role = RoleKernel
 		name = "kernel"
+		layerHash = ""
 		customMediaType = MimeTypeECIKernel
 		filepath = p.Artifact.Kernel
 		mediaType = GetLayerMediaType(customMediaType, format)
 		if format == FormatContainer {
 			tgzfile := path.Join(tmpDir, name)
-			err = tgz.Compress(filepath, name, tgzfile)
+			tarHash, _, err := tgz.Compress(filepath, name, tgzfile)
 			if err != nil {
 				return "", fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
 			}
 			filepath = tgzfile
+			// convert the tarHash into a digest
+			layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
 		}
 		desc, err = fileStore.Add(name, mediaType, filepath)
 		if err != nil {
@@ -120,6 +125,10 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		desc.Annotations[AnnotationRole] = role
 		desc.Annotations[ocispec.AnnotationTitle] = name
 		pushContents = append(pushContents, desc)
+		if layerHash == "" {
+			layerHash = desc.Digest
+		}
+		layers = append(layers, layerHash)
 
 		labels[AnnotationKernelPath] = fmt.Sprintf("/%s", name)
 	}
@@ -127,16 +136,18 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 	if p.Artifact.Initrd != "" {
 		role = RoleInitrd
 		name = "initrd"
+		layerHash = ""
 		customMediaType = MimeTypeECIInitrd
 		filepath = p.Artifact.Initrd
 		mediaType = GetLayerMediaType(customMediaType, format)
 		if format == FormatContainer {
 			tgzfile := path.Join(tmpDir, name)
-			err = tgz.Compress(filepath, name, tgzfile)
+			tarHash, _, err := tgz.Compress(filepath, name, tgzfile)
 			if err != nil {
 				return "", fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
 			}
 			filepath = tgzfile
+			layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
 		}
 		desc, err = fileStore.Add(name, mediaType, filepath)
 		if err != nil {
@@ -146,6 +157,10 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		desc.Annotations[AnnotationRole] = role
 		desc.Annotations[ocispec.AnnotationTitle] = name
 		pushContents = append(pushContents, desc)
+		if layerHash == "" {
+			layerHash = desc.Digest
+		}
+		layers = append(layers, layerHash)
 
 		labels[AnnotationInitrdPath] = fmt.Sprintf("/%s", name)
 	}
@@ -155,14 +170,16 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		customMediaType = TypeToMime[disk.Type]
 		filepath = disk.Path
 		name := fmt.Sprintf("disk-root-%s", path.Base(filepath))
+		layerHash = ""
 		mediaType = GetLayerMediaType(customMediaType, format)
 		if format == FormatContainer {
 			tgzfile := path.Join(tmpDir, name)
-			err = tgz.Compress(filepath, name, tgzfile)
+			tarHash, _, err := tgz.Compress(filepath, name, tgzfile)
 			if err != nil {
 				return "", fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
 			}
 			filepath = tgzfile
+			layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
 		}
 		desc, err = fileStore.Add(name, mediaType, filepath)
 		if err != nil {
@@ -172,6 +189,10 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		desc.Annotations[AnnotationRole] = role
 		desc.Annotations[ocispec.AnnotationTitle] = name
 		pushContents = append(pushContents, desc)
+		if layerHash == "" {
+			layerHash = desc.Digest
+		}
+		layers = append(layers, layerHash)
 
 		labels[AnnotationRootPath] = fmt.Sprintf("/%s", name)
 	}
@@ -181,14 +202,16 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 			customMediaType = TypeToMime[disk.Type]
 			filepath = disk.Path
 			name := fmt.Sprintf("disk-%d-%s", i, path.Base(filepath))
+			layerHash = ""
 			mediaType = GetLayerMediaType(customMediaType, format)
 			if format == FormatContainer {
 				tgzfile := path.Join(tmpDir, name)
-				err = tgz.Compress(filepath, name, tgzfile)
+				tarHash, _, err := tgz.Compress(filepath, name, tgzfile)
 				if err != nil {
 					return "", fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
 				}
 				filepath = tgzfile
+				layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
 			}
 			desc, err = fileStore.Add(name, mediaType, filepath)
 			if err != nil {
@@ -198,6 +221,10 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 			desc.Annotations[AnnotationRole] = role
 			desc.Annotations[ocispec.AnnotationTitle] = name
 			pushContents = append(pushContents, desc)
+			if layerHash == "" {
+				layerHash = desc.Digest
+			}
+			layers = append(layers, layerHash)
 
 			labels[fmt.Sprintf(AnnotationDiskIndexPathPattern, i)] = fmt.Sprintf("/%s", name)
 		}
@@ -235,7 +262,7 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 			OS:           configOS,
 			RootFS: ocispec.RootFS{
 				Type:    "layers",
-				DiffIDs: []digest.Digest{},
+				DiffIDs: layers,
 			},
 			Config: ocispec.ImageConfig{
 				Labels: labels,

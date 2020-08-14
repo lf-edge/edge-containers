@@ -3,6 +3,7 @@ package tgz
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -10,20 +11,26 @@ import (
 
 // Compress takes a given path to a file and creates a tgz file that
 // contains only that file. Gives the file the provided name in the tgz.
-func Compress(infile, name, outfile string) error {
+// Returns hashes of the tar and the entire gzip
+func Compress(infile, name, outfile string) (tarSha []byte, tgzSha []byte, err error) {
+	tgzHasher, tarHasher := sha256.New(), sha256.New()
 	tgzfile, err := os.Create(outfile)
 	if err != nil {
-		return fmt.Errorf("Could not create tgz file '%s': %v", outfile, err)
+		return nil, nil, fmt.Errorf("Could not create tgz file '%s': %v", outfile, err)
 	}
 	defer tgzfile.Close()
-	gzipWriter := gzip.NewWriter(tgzfile)
+	gzipWriter := gzip.NewWriter(io.MultiWriter(tgzfile, tgzHasher))
 	defer gzipWriter.Close()
-	tarWriter := tar.NewWriter(gzipWriter)
+	tarWriter := tar.NewWriter(io.MultiWriter(gzipWriter, tarHasher))
 	defer tarWriter.Close()
 	if err := addFileToTarWriter(infile, name, tarWriter); err != nil {
-		return fmt.Errorf("could not add %s to tar as %s: %v", infile, name, err)
+		return nil, nil, fmt.Errorf("could not add %s to tar as %s: %v", infile, name, err)
 	}
-	return nil
+	// we cannot wait for the defer, since we have to Close() to flush
+	// everything out before calculating final hashes in the return line
+	tarWriter.Close()
+	gzipWriter.Close()
+	return tarHasher.Sum(nil), tgzHasher.Sum(nil), nil
 }
 
 func addFileToTarWriter(infile, name string, tarWriter *tar.Writer) error {
