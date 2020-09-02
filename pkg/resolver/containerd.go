@@ -9,6 +9,7 @@ package resolver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -36,11 +37,12 @@ const (
 // When the above is fixed, we can do better with this.
 type Containerd struct {
 	client    *containerd.Client
-	namespace string
+	namespace string // we do not really need to keep this, as we consume it on NewContainer; just here for posterity
 	pusher    *containerdPusher
 	done      func(context.Context) error
 }
 
+// NewContainerd create a containerd ResolverFinalizer given the containerd address and namespace (optional)
 func NewContainerd(ctx context.Context, address, namespace string) (context.Context, *Containerd, error) {
 	client, err := containerd.New(address)
 	if err != nil {
@@ -54,6 +56,18 @@ func NewContainerd(ctx context.Context, address, namespace string) (context.Cont
 		return nil, nil, fmt.Errorf("unable to get lease: %v", err)
 	}
 	return ctx, &Containerd{client: client, namespace: namespace, done: done}, nil
+}
+
+// NewContainerdWithClient create a containerd ResolverFinalizer with an existing containerd client connection
+func NewContainerdWithClient(ctx context.Context, client *containerd.Client) (context.Context, *Containerd, error) {
+	if client == nil {
+		return nil, nil, errors.New("no containerd client provided")
+	}
+	ctx, done, err := client.WithLease(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get lease: %v", err)
+	}
+	return ctx, &Containerd{client: client, done: done}, nil
 }
 
 func (d *Containerd) Resolve(ctx context.Context, ref string) (name string, desc ocispec.Descriptor, err error) {
