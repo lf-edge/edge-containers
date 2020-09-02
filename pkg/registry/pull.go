@@ -28,7 +28,7 @@ type Puller struct {
 // Arguments are the dir where to write it, an io.Writer for logging output, and a target.
 //
 // The target determines the target type. target.Registry just uses the default registry,
-// while target.Directory uses a local directory.
+// while target.Directory uses a local directory, etc.
 func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, target target.Target) (*ocispec.Descriptor, *Artifact, error) {
 	// must have valid image ref
 	if p.Image == "" {
