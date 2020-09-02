@@ -10,7 +10,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
-	"github.com/lf-edge/edge-containers/pkg/registry/target"
+	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
 
 	"github.com/containerd/containerd/images"
 	digest "github.com/opencontainers/go-digest"
@@ -27,9 +27,9 @@ type Puller struct {
 // Pull pull the artifact from the appropriate registry and save it to a local directory.
 // Arguments are the dir where to write it, an io.Writer for logging output, and a target.
 //
-// The target determines the target type. target.Registry just uses the default registry,
-// while target.Directory uses a local directory, etc.
-func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, target target.Target) (*ocispec.Descriptor, *Artifact, error) {
+// The resolver provides the channel to connect to the target type. resolver.Registry just uses the default registry,
+// while resolver.Directory uses a local directory, etc.
+func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, resolver ecresolver.ResolverCloser) (*ocispec.Descriptor, *Artifact, error) {
 	// must have valid image ref
 	if p.Image == "" {
 		return nil, nil, fmt.Errorf("must have valid image ref")
@@ -42,9 +42,10 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, target target.
 	var (
 		err error
 	)
-	ctx, resolver, err := target.Resolver(context.Background())
-	if err != nil {
-		return nil, nil, err
+	// get the saved context; if nil, create a background one
+	ctx := resolver.Context()
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	pullOpts := []oras.PullOpt{}
 
