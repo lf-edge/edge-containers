@@ -13,6 +13,10 @@ const (
 	Vhdx
 )
 
+func (d DiskType) String() string {
+	return [...]string{"Raw", "Vmdk", "Vhd", "ISO", "Qcow", "Qcow2", "Ova", "Vhdx"}[d]
+}
+
 type Disk struct {
 	Path string
 	Type DiskType
@@ -44,5 +48,15 @@ var TypeToMime = map[DiskType]string{
 	Qcow:  MimeTypeECIDiskQcow,
 	Qcow2: MimeTypeECIDiskQcow2,
 	Ova:   MimeTypeECIDiskOva,
-	Vhdx:  MimeTypeECIDiskOva,
+	Vhdx:  MimeTypeECIDiskVhdx,
+}
+var MimeToType = map[string]DiskType{
+	MimeTypeECIDiskRaw:   Raw,
+	MimeTypeECIDiskVhd:   Vhd,
+	MimeTypeECIDiskVmdk:  Vmdk,
+	MimeTypeECIDiskISO:   ISO,
+	MimeTypeECIDiskQcow:  Qcow,
+	MimeTypeECIDiskQcow2: Qcow2,
+	MimeTypeECIDiskOva:   Ova,
+	MimeTypeECIDiskVhdx:  Vhdx,
 }
