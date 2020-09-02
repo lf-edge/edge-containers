@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lf-edge/edge-containers/pkg/registry/target"
+	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
 	"github.com/lf-edge/edge-containers/pkg/store"
 	"github.com/lf-edge/edge-containers/pkg/tgz"
 
@@ -47,7 +47,7 @@ type Pusher struct {
 //
 // The target determines the target type. target.Registry just uses the default registry,
 // while target.Directory uses a local directory.
-func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts ConfigOpts, target target.Target) (string, error) {
+func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts ConfigOpts, resolver ecresolver.ResolverCloser) (string, error) {
 	var (
 		desc            ocispec.Descriptor
 		mediaType       string
@@ -71,9 +71,10 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		p.Impl = oras.Push
 	}
 
-	ctx, resolver, err := target.Resolver(context.Background())
-	if err != nil {
-		return "", err
+	// get the saved context; if nil, create a background one
+	ctx := resolver.Context()
+	if ctx == nil {
+		ctx = context.Background()
 	}
 
 	// Go through each file type in the registry and add the appropriate file type and path, along with annotations

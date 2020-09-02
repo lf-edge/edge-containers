@@ -40,6 +40,7 @@ type Containerd struct {
 	namespace string // we do not really need to keep this, as we consume it on NewContainer; just here for posterity
 	pusher    *containerdPusher
 	done      func(context.Context) error
+	ctx       context.Context
 }
 
 // NewContainerd create a containerd ResolverFinalizer given the containerd address and namespace (optional)
@@ -55,7 +56,7 @@ func NewContainerd(ctx context.Context, address, namespace string) (context.Cont
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get lease: %v", err)
 	}
-	return ctx, &Containerd{client: client, namespace: namespace, done: done}, nil
+	return ctx, &Containerd{client: client, ctx: ctx, namespace: namespace, done: done}, nil
 }
 
 // NewContainerdWithClient create a containerd ResolverFinalizer with an existing containerd client connection
@@ -67,7 +68,7 @@ func NewContainerdWithClient(ctx context.Context, client *containerd.Client) (co
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get lease: %v", err)
 	}
-	return ctx, &Containerd{client: client, done: done}, nil
+	return ctx, &Containerd{client: client, ctx: ctx, done: done}, nil
 }
 
 func (d *Containerd) Resolve(ctx context.Context, ref string) (name string, desc ocispec.Descriptor, err error) {
@@ -99,6 +100,10 @@ func (d *Containerd) Finalize(ctx context.Context) error {
 		d.done(ctx)
 	}
 	return nil
+}
+
+func (d *Containerd) Context() context.Context {
+	return d.ctx
 }
 
 type containerdFetcher struct {

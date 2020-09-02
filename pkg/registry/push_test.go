@@ -16,7 +16,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/deislabs/oras/pkg/oras"
 	"github.com/lf-edge/edge-containers/pkg/registry"
-	"github.com/lf-edge/edge-containers/pkg/registry/target"
+	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
 
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -142,7 +142,11 @@ func TestPush(t *testing.T) {
 			Image:    tt.image,
 			Impl:     m.Push,
 		}
-		dig, err := pusher.Push(tt.format, false, nil, registry.ConfigOpts{}, &target.Registry{})
+		_, resolver, err := ecresolver.NewRegistry(nil)
+		if err != nil {
+			t.Errorf("unexpected error when created NewRegistry resolver: %v", err)
+		}
+		dig, err := pusher.Push(tt.format, false, nil, registry.ConfigOpts{}, resolver)
 		switch {
 		case (err != nil && tt.err == nil) || (err == nil && tt.err != nil) || (err != nil && tt.err != nil && !strings.HasPrefix(err.Error(), tt.err.Error())):
 			t.Errorf("%d: mismatched errors, actual %v expected %v", i, err, tt.err)

@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/lf-edge/edge-containers/pkg/registry"
+	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +32,11 @@ var pullCmd = &cobra.Command{
 		puller := registry.Puller{
 			Image: image,
 		}
-		desc, artifact, err := puller.Pull(pullDir, verbose, os.Stdout, remoteTarget)
+		_, resolver, err := ecresolver.NewRegistry(context.TODO())
+		if err != nil {
+			log.Fatalf("unexpected error when created NewRegistry resolver: %v", err)
+		}
+		desc, artifact, err := puller.Pull(pullDir, verbose, os.Stdout, resolver)
 		if err != nil {
 			log.Fatalf("error pulling from registry: %v", err)
 		}

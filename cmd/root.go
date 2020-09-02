@@ -1,16 +1,17 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"strings"
 
-	"github.com/lf-edge/edge-containers/pkg/registry/target"
+	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
 	"github.com/spf13/cobra"
 )
 
 var (
 	remote       string
-	remoteTarget target.Target
+	remoteTarget ecresolver.ResolverCloser
 	ctrNamespace string
 )
 
@@ -22,17 +23,24 @@ var rootCmd = &cobra.Command{
 	flag to indicate where to go. Blank ("") is the default registry, /path or file:///path is for a local directory,
 	containerd:/path/to/socket is for containerd.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		var (
+			err error
+			ctx = context.TODO()
+		)
 		switch {
 		case remote == "":
-			remoteTarget = &target.Registry{}
+			_, remoteTarget, err = ecresolver.NewRegistry(ctx)
 		case strings.HasPrefix(remote, "containerd:"):
-			remoteTarget = target.NewContainerd(strings.Replace(remote, "containerd:", "", 1), ctrNamespace)
+			_, remoteTarget, err = ecresolver.NewContainerd(ctx, strings.Replace(remote, "containerd:", "", 1), ctrNamespace)
 		case strings.HasPrefix(remote, "file://"):
-			remoteTarget = target.NewDirectory(strings.Replace(remote, "file://", "", 1))
+			_, remoteTarget, err = ecresolver.NewDirectory(ctx, strings.Replace(remote, "file://", "", 1))
 		case strings.HasPrefix(remote, "/"):
-			remoteTarget = target.NewDirectory(remote)
+			_, remoteTarget, err = ecresolver.NewDirectory(ctx, remote)
 		default:
 			log.Fatalf("unknown remote: %s", remote)
+		}
+		if err != nil {
+			log.Fatalf("unexpected error when created NewRegistry resolver: %v", err)
 		}
 	},
 }

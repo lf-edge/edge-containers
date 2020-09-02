@@ -12,7 +12,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/deislabs/oras/pkg/oras"
 	"github.com/lf-edge/edge-containers/pkg/registry"
-	"github.com/lf-edge/edge-containers/pkg/registry/target"
+	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -48,7 +48,11 @@ func TestPull(t *testing.T) {
 			Image: tt.image,
 			Impl:  m.Pull,
 		}
-		dig, _, err := puller.Pull("/tmp/foo", false, nil, &target.Registry{})
+		_, resolver, err := ecresolver.NewRegistry(nil)
+		if err != nil {
+			t.Errorf("unexpected error when created NewRegistry resolver: %v", err)
+		}
+		dig, _, err := puller.Pull("/tmp/foo", false, nil, resolver)
 		switch {
 		case (err != nil && tt.err == nil) || (err == nil && tt.err != nil) || (err != nil && tt.err != nil && !strings.HasPrefix(err.Error(), tt.err.Error())):
 			t.Errorf("%d: mismatched errors, actual %v expected %v", i, err, tt.err)

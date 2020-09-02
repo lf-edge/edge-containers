@@ -8,5 +8,6 @@ import (
 
 type ResolverCloser interface {
 	remotes.Resolver
+	Context() context.Context
 	Finalize(ctx context.Context) error
 }

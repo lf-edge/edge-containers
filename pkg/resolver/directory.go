@@ -38,6 +38,7 @@ import (
 
 type Directory struct {
 	dir string
+	ctx context.Context
 }
 
 func NewDirectory(ctx context.Context, dir string) (context.Context, *Directory, error) {
@@ -45,7 +46,7 @@ func NewDirectory(ctx context.Context, dir string) (context.Context, *Directory,
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return ctx, nil, fmt.Errorf("could not create directory %s: %v", dir, err)
 	}
-	return ctx, &Directory{dir: dir}, nil
+	return ctx, &Directory{dir: dir, ctx: ctx}, nil
 }
 
 func (d *Directory) Resolve(ctx context.Context, ref string) (name string, desc ocispec.Descriptor, err error) {
@@ -96,6 +97,10 @@ func (d *Directory) Pusher(ctx context.Context, ref string) (remotes.Pusher, err
 
 func (d *Directory) Finalize(ctx context.Context) error {
 	return nil
+}
+
+func (d *Directory) Context() context.Context {
+	return d.ctx
 }
 
 type directoryFetcher struct {
