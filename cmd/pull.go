@@ -30,12 +30,23 @@ var pullCmd = &cobra.Command{
 		puller := registry.Puller{
 			Image: image,
 		}
-		desc, err := puller.Pull(pullDir, verbose, os.Stdout, remoteTarget)
+		desc, artifact, err := puller.Pull(pullDir, verbose, os.Stdout, remoteTarget)
 		if err != nil {
 			log.Fatalf("error pulling from registry: %v", err)
 		}
 		fmt.Printf("Pulled image %s with digest %s to directory %s\n", image, string(desc.Digest), pullDir)
-
+		fmt.Println("file locations and types:")
+		fmt.Printf("\tkernel: %s\n", artifact.Kernel)
+		fmt.Printf("\tinitrd: %s\n", artifact.Initrd)
+		rootDisk := artifact.Root
+		if rootDisk == nil {
+			fmt.Printf("\troot: \n")
+		} else {
+			fmt.Printf("\troot: %s %v\n", rootDisk.Path, rootDisk.Type)
+		}
+		for i, d := range artifact.Disks {
+			fmt.Printf("\tadditional disk %d: %s %v\n", i, d.Path, d.Type)
+		}
 	},
 }
 

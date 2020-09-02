@@ -48,7 +48,7 @@ func TestPull(t *testing.T) {
 			Image: tt.image,
 			Impl:  m.Pull,
 		}
-		dig, err := puller.Pull("/tmp/foo", false, nil, &target.Registry{})
+		dig, _, err := puller.Pull("/tmp/foo", false, nil, &target.Registry{})
 		switch {
 		case (err != nil && tt.err == nil) || (err == nil && tt.err != nil) || (err != nil && tt.err != nil && !strings.HasPrefix(err.Error(), tt.err.Error())):
 			t.Errorf("%d: mismatched errors, actual %v expected %v", i, err, tt.err)

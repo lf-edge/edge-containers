@@ -29,10 +29,10 @@ type Puller struct {
 //
 // The target determines the target type. target.Registry just uses the default registry,
 // while target.Directory uses a local directory.
-func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, target target.Target) (*ocispec.Descriptor, error) {
+func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, target target.Target) (*ocispec.Descriptor, *Artifact, error) {
 	// must have valid image ref
 	if p.Image == "" {
-		return nil, fmt.Errorf("must have valid image ref")
+		return nil, nil, fmt.Errorf("must have valid image ref")
 	}
 	// ensure we have a real puller
 	if p.Impl == nil {
@@ -44,7 +44,7 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, target target.
 	)
 	ctx, resolver, err := target.Resolver(context.Background())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pullOpts := []oras.PullOpt{}
 
@@ -56,11 +56,41 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, target target.
 		pullOpts = append(pullOpts, oras.WithPullBaseHandler(pullStatusTrack(writer)))
 	}
 	// pull the images
-	desc, _, err := p.Impl(ctx, resolver, p.Image, fileStore, oras.WithAllowedMediaTypes(allowedMediaTypes))
+	desc, layers, err := p.Impl(ctx, resolver, p.Image, fileStore, oras.WithAllowedMediaTypes(allowedMediaTypes))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &desc, nil
+	// now process the layers to fill in our artifact
+	artifact := &Artifact{
+		Disks: []*Disk{},
+	}
+	for _, l := range layers {
+		if l.Annotations == nil {
+			continue
+		}
+		filepath := l.Annotations[ocispec.AnnotationTitle]
+		if filepath == "" {
+			continue
+		}
+		mediaType := l.Annotations[AnnotationMediaType]
+		switch l.Annotations[AnnotationRole] {
+		case RoleKernel:
+			artifact.Kernel = filepath
+		case RoleInitrd:
+			artifact.Initrd = filepath
+		case RoleRootDisk:
+			artifact.Root = &Disk{
+				Path: filepath,
+				Type: MimeToType[mediaType],
+			}
+		case AnnotationMediaType:
+			artifact.Disks = append(artifact.Disks, &Disk{
+				Path: filepath,
+				Type: MimeToType[mediaType],
+			})
+		}
+	}
+	return &desc, artifact, nil
 }
 
 func pullStatusTrack(writer io.Writer) images.Handler {
