@@ -23,7 +23,7 @@ func NewRegistry(ctx context.Context) (context.Context, *Registry, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get authenticating client to registry: %v", err)
 	}
-	resolver, err := cli.Resolver(ctx)
+	resolver, err := cli.Resolver(ctx, nil, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get resolver for registry: %v", err)
 	}
