@@ -117,7 +117,7 @@ func (d containerdFetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (
 	if err != nil {
 		return nil, err
 	}
-	return containerdReader{
+	return &containerdReader{
 		reader: reader,
 	}, nil
 }
@@ -127,11 +127,11 @@ type containerdReader struct {
 	offset int64
 }
 
-func (c containerdReader) Close() error {
+func (c *containerdReader) Close() error {
 	return c.reader.Close()
 }
 
-func (c containerdReader) Read(p []byte) (n int, err error) {
+func (c *containerdReader) Read(p []byte) (n int, err error) {
 	n, err = c.reader.ReadAt(p, c.offset)
 	c.offset += int64(n)
 	return n, err
