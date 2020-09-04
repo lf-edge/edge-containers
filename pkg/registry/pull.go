@@ -56,8 +56,9 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, resolver ecres
 	if verbose {
 		pullOpts = append(pullOpts, oras.WithPullBaseHandler(pullStatusTrack(writer)))
 	}
+	pullOpts = append(pullOpts, oras.WithAllowedMediaTypes(allowedMediaTypes))
 	// pull the images
-	desc, layers, err := p.Impl(ctx, resolver, p.Image, fileStore, oras.WithAllowedMediaTypes(allowedMediaTypes))
+	desc, layers, err := p.Impl(ctx, resolver, p.Image, fileStore, pullOpts...)
 	if err != nil {
 		return nil, nil, err
 	}
