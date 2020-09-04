@@ -17,6 +17,7 @@ const (
 	MimeTypeOCIImageLayerGzip = "application/vnd.oci.image.layer.v1.tar+gzip"
 	MimeTypeOCIImageManifest  = "application/vnd.oci.image.manifest.v1+json"
 	MimeTypeOCIImageIndex     = "application/vnd.oci.image.index.v1+json"
+	MimeTypeDockerImageIndex  = "application/vnd.docker.distribution.manifest.list.v2+json"
 )
 
 var allTypes = []string{
@@ -36,6 +37,7 @@ var allTypes = []string{
 	MimeTypeOCIImageLayerGzip,
 	MimeTypeOCIImageManifest,
 	MimeTypeOCIImageIndex,
+	MimeTypeDockerImageIndex,
 }
 
 func AllMimeTypes() []string {
