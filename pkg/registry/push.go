@@ -37,6 +37,8 @@ type Pusher struct {
 	Artifact *Artifact
 	// Image reference to image, e.g. docker.io/foo/bar:tagabc
 	Image string
+	// Timestamp set any files to have this timestamp, instead of the default of the file time
+	Timestamp *time.Time
 	// Impl the OCI artifacts pusher. Normally should be left blank, will be filled in to use oras. Override only for special cases like testing.
 	Impl func(ctx context.Context, resolver remotes.Resolver, ref string, provider ctrcontent.Provider, descriptors []ocispec.Descriptor, opts ...oras.PushOpt) (ocispec.Descriptor, error)
 }
@@ -93,7 +95,7 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		layerHash    digest.Digest
 	)
 
-	if format == FormatContainer {
+	if format == FormatLegacy {
 		tmpDir, err = ioutil.TempDir("", "edge-containers")
 		if err != nil {
 			return "", fmt.Errorf("could not make temporary directory for tgz files: %v", err)
@@ -108,9 +110,9 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		customMediaType = MimeTypeECIKernel
 		filepath = p.Artifact.Kernel
 		mediaType = GetLayerMediaType(customMediaType, format)
-		if format == FormatContainer {
+		if format == FormatLegacy {
 			tgzfile := path.Join(tmpDir, name)
-			tarHash, _, err := tgz.Compress(filepath, name, tgzfile)
+			tarHash, _, err := tgz.Compress(filepath, name, tgzfile, p.Timestamp)
 			if err != nil {
 				return "", fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
 			}
@@ -141,9 +143,9 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		customMediaType = MimeTypeECIInitrd
 		filepath = p.Artifact.Initrd
 		mediaType = GetLayerMediaType(customMediaType, format)
-		if format == FormatContainer {
+		if format == FormatLegacy {
 			tgzfile := path.Join(tmpDir, name)
-			tarHash, _, err := tgz.Compress(filepath, name, tgzfile)
+			tarHash, _, err := tgz.Compress(filepath, name, tgzfile, p.Timestamp)
 			if err != nil {
 				return "", fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
 			}
@@ -173,9 +175,9 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		name := fmt.Sprintf("disk-root-%s", path.Base(filepath))
 		layerHash = ""
 		mediaType = GetLayerMediaType(customMediaType, format)
-		if format == FormatContainer {
+		if format == FormatLegacy {
 			tgzfile := path.Join(tmpDir, name)
-			tarHash, _, err := tgz.Compress(filepath, name, tgzfile)
+			tarHash, _, err := tgz.Compress(filepath, name, tgzfile, p.Timestamp)
 			if err != nil {
 				return "", fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
 			}
@@ -205,9 +207,9 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 			name := fmt.Sprintf("disk-%d-%s", i, path.Base(filepath))
 			layerHash = ""
 			mediaType = GetLayerMediaType(customMediaType, format)
-			if format == FormatContainer {
+			if format == FormatLegacy {
 				tgzfile := path.Join(tmpDir, name)
-				tarHash, _, err := tgz.Compress(filepath, name, tgzfile)
+				tarHash, _, err := tgz.Compress(filepath, name, tgzfile, p.Timestamp)
 				if err != nil {
 					return "", fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
 				}
@@ -242,7 +244,6 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 			return "", fmt.Errorf("error adding %s config at %s: %v", name, filepath, err)
 		}
 		desc.Annotations[AnnotationMediaType] = customMediaType
-		pushOpts = append(pushOpts, oras.WithConfig(desc))
 	} else {
 		// for container format, we expect to have a specific config so docker can work with it
 		created := time.Now()
@@ -280,8 +281,8 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		if err != nil {
 			return "", fmt.Errorf("error adding OCI config: %v", err)
 		}
-		pushOpts = append(pushOpts, oras.WithConfig(desc))
 	}
+	pushOpts = append(pushOpts, oras.WithConfig(desc))
 
 	if verbose {
 		pushOpts = append(pushOpts, oras.WithPushBaseHandler(pushStatusTrack(writer)))

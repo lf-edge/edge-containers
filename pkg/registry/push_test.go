@@ -1,6 +1,9 @@
 package registry_test
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -9,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 
@@ -30,7 +34,8 @@ const (
 )
 
 var (
-	desc = ocispec.Descriptor{Digest: "sha256:abcdef123456"}
+	desc     = ocispec.Descriptor{Digest: "sha256:abcdef123456"}
+	initTime = time.Now()
 )
 
 // MockedPush mocks calling oras.Push
@@ -44,21 +49,53 @@ func (m *MockedPush) Push(ctx context.Context, resolver remotes.Resolver, ref st
 }
 
 type TestInputFile struct {
-	name   string
-	tmpdir string
+	name             string
+	processedName    string
+	tmpdir           string
+	fullname         string
+	contents         []byte
+	compressed       []byte
+	digest           digest.Digest
+	compressedDigest digest.Digest
 }
 
-func (t TestInputFile) fullname() string {
-	return filepath.Join(t.tmpdir, t.name)
+func NewTestInputFile(name, processedName, tmpdir string) TestInputFile {
+	t := TestInputFile{
+		name:          name,
+		processedName: processedName,
+		tmpdir:        tmpdir,
+		fullname:      filepath.Join(tmpdir, name),
+		contents:      []byte(name),
+	}
+	out, _ := compress([]byte(name), processedName, initTime)
+	t.compressed = out
+	t.digest = digest.Digest(fmt.Sprintf("sha256:%x", sha256.Sum256(t.contents)))
+	t.compressedDigest = digest.Digest(fmt.Sprintf("sha256:%x", sha256.Sum256(t.compressed)))
+	return t
 }
-func (t TestInputFile) contents() []byte {
-	return []byte(t.name)
+
+func (t TestInputFile) Fullname() string {
+	return t.fullname
 }
-func (t TestInputFile) size() int64 {
-	return int64(len(t.contents()))
+func (t TestInputFile) Contents() []byte {
+	return t.contents
 }
-func (t TestInputFile) digest() digest.Digest {
-	return digest.Digest(fmt.Sprintf("sha256:%x", sha256.Sum256(t.contents())))
+
+// legacyContents create the tgz that would get created
+func (t TestInputFile) LegacyContents() []byte {
+	return t.compressed
+}
+func (t TestInputFile) Size() int64 {
+	return int64(len(t.contents))
+}
+func (t TestInputFile) LegacySize() int64 {
+	return int64(len(t.compressed))
+}
+func (t TestInputFile) Digest() digest.Digest {
+	return t.digest
+}
+func (t TestInputFile) LegacyDigest() digest.Digest {
+	return t.compressedDigest
 }
 
 func TestPush(t *testing.T) {
@@ -70,37 +107,37 @@ func TestPush(t *testing.T) {
 	defer os.RemoveAll(tmpdir)
 	// full paths
 	inputs := map[string]TestInputFile{}
-	inputs["kernel"] = TestInputFile{name: "kernel", tmpdir: tmpdir}
-	inputs["initrd"] = TestInputFile{name: "initrd", tmpdir: tmpdir}
-	inputs["root"] = TestInputFile{name: "root.raw", tmpdir: tmpdir}
-	inputs["disk1"] = TestInputFile{name: "disk1.qcow2", tmpdir: tmpdir}
+	inputs["kernel"] = NewTestInputFile("kernel", "kernel", tmpdir)
+	inputs["initrd"] = NewTestInputFile("initrd", "initrd", tmpdir)
+	inputs["root"] = NewTestInputFile("root.raw", "disk-root-root.raw", tmpdir)
+	inputs["disk1"] = NewTestInputFile("disk1.qcow2", "disk-0-disk1.qcow2", tmpdir)
 	// fill the files
 	for _, v := range inputs {
-		err = ioutil.WriteFile(v.fullname(), v.contents(), 0644)
+		err = ioutil.WriteFile(v.Fullname(), v.Contents(), 0644)
 		if err != nil {
-			t.Fatalf("unable to create %s: %v", v.fullname(), err)
+			t.Fatalf("unable to create %s: %v", v.Fullname(), err)
 		}
 	}
 	validArtifact := &registry.Artifact{
-		Config: inputs["config"].fullname(),
-		Kernel: inputs["kernel"].fullname(),
-		Initrd: inputs["initrd"].fullname(),
-		Root:   &registry.Disk{Path: inputs["root"].fullname(), Type: rootDiskType},
-		Disks:  []*registry.Disk{{Path: inputs["disk1"].fullname(), Type: diskOneType}},
+		Config: inputs["config"].Fullname(),
+		Kernel: inputs["kernel"].Fullname(),
+		Initrd: inputs["initrd"].Fullname(),
+		Root:   &registry.Disk{Path: inputs["root"].Fullname(), Type: rootDiskType},
+		Disks:  []*registry.Disk{{Path: inputs["disk1"].Fullname(), Type: diskOneType}},
 	}
 	// expected descriptors to be returned in normal mode
 	expectedDescriptors := []ocispec.Descriptor{
-		{MediaType: registry.MimeTypeECIKernel, Digest: inputs["kernel"].digest(), Size: inputs["kernel"].size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIKernel, registry.AnnotationRole: registry.RoleKernel, ocispec.AnnotationTitle: "kernel"}},
-		{MediaType: registry.MimeTypeECIInitrd, Digest: inputs["initrd"].digest(), Size: inputs["initrd"].size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIInitrd, registry.AnnotationRole: registry.RoleInitrd, ocispec.AnnotationTitle: "initrd"}},
-		{MediaType: registry.MimeTypeECIDiskRaw, Digest: inputs["root"].digest(), Size: inputs["root"].size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIDiskRaw, registry.AnnotationRole: registry.RoleRootDisk, ocispec.AnnotationTitle: "disk-root-" + inputs["root"].name}},
-		{MediaType: registry.MimeTypeECIDiskQcow2, Digest: inputs["disk1"].digest(), Size: inputs["disk1"].size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIDiskQcow2, registry.AnnotationRole: registry.RoleAdditionalDisk, ocispec.AnnotationTitle: "disk-0-" + inputs["disk1"].name}},
+		{MediaType: registry.MimeTypeECIKernel, Digest: inputs["kernel"].Digest(), Size: inputs["kernel"].Size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIKernel, registry.AnnotationRole: registry.RoleKernel, ocispec.AnnotationTitle: "kernel"}},
+		{MediaType: registry.MimeTypeECIInitrd, Digest: inputs["initrd"].Digest(), Size: inputs["initrd"].Size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIInitrd, registry.AnnotationRole: registry.RoleInitrd, ocispec.AnnotationTitle: "initrd"}},
+		{MediaType: registry.MimeTypeECIDiskRaw, Digest: inputs["root"].Digest(), Size: inputs["root"].Size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIDiskRaw, registry.AnnotationRole: registry.RoleRootDisk, ocispec.AnnotationTitle: "disk-root-" + inputs["root"].name}},
+		{MediaType: registry.MimeTypeECIDiskQcow2, Digest: inputs["disk1"].Digest(), Size: inputs["disk1"].Size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIDiskQcow2, registry.AnnotationRole: registry.RoleAdditionalDisk, ocispec.AnnotationTitle: "disk-0-" + inputs["disk1"].name}},
 	}
-	// expected descriptors to be returned in lgeacy mode
+	// expected descriptors to be returned in legacy mode
 	expectedDescriptorsLegacy := []ocispec.Descriptor{
-		{MediaType: registry.MimeTypeOCIImageLayer, Digest: inputs["kernel"].digest(), Size: inputs["kernel"].size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIKernel, registry.AnnotationRole: registry.RoleKernel, ocispec.AnnotationTitle: "kernel"}},
-		{MediaType: registry.MimeTypeOCIImageLayer, Digest: inputs["initrd"].digest(), Size: inputs["initrd"].size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIInitrd, registry.AnnotationRole: registry.RoleInitrd, ocispec.AnnotationTitle: "initrd"}},
-		{MediaType: registry.MimeTypeOCIImageLayer, Digest: inputs["root"].digest(), Size: inputs["root"].size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIDiskRaw, registry.AnnotationRole: registry.RoleRootDisk, ocispec.AnnotationTitle: "disk-root-" + inputs["root"].name}},
-		{MediaType: registry.MimeTypeOCIImageLayer, Digest: inputs["disk1"].digest(), Size: inputs["disk1"].size(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIDiskQcow2, registry.AnnotationRole: registry.RoleAdditionalDisk, ocispec.AnnotationTitle: "disk-0-" + inputs["disk1"].name}},
+		{MediaType: registry.MimeTypeOCIImageLayerGzip, Digest: inputs["kernel"].LegacyDigest(), Size: inputs["kernel"].LegacySize(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIKernel, registry.AnnotationRole: registry.RoleKernel, ocispec.AnnotationTitle: "kernel"}},
+		{MediaType: registry.MimeTypeOCIImageLayerGzip, Digest: inputs["initrd"].LegacyDigest(), Size: inputs["initrd"].LegacySize(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIInitrd, registry.AnnotationRole: registry.RoleInitrd, ocispec.AnnotationTitle: "initrd"}},
+		{MediaType: registry.MimeTypeOCIImageLayerGzip, Digest: inputs["root"].LegacyDigest(), Size: inputs["root"].LegacySize(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIDiskRaw, registry.AnnotationRole: registry.RoleRootDisk, ocispec.AnnotationTitle: "disk-root-" + inputs["root"].name}},
+		{MediaType: registry.MimeTypeOCIImageLayerGzip, Digest: inputs["disk1"].LegacyDigest(), Size: inputs["disk1"].LegacySize(), Annotations: map[string]string{registry.AnnotationMediaType: registry.MimeTypeECIDiskQcow2, registry.AnnotationRole: registry.RoleAdditionalDisk, ocispec.AnnotationTitle: "disk-0-" + inputs["disk1"].name}},
 	}
 
 	tests := []struct {
@@ -138,9 +175,10 @@ func TestPush(t *testing.T) {
 		m.On("Push", mock.Anything, mock.Anything, tt.image, mock.Anything, tt.contents, mock.MatchedBy(func(opts []oras.PushOpt) bool { return len(opts) == 1 })).Return(desc, nil)
 		// create the Pusher
 		pusher := registry.Pusher{
-			Artifact: tt.artifact,
-			Image:    tt.image,
-			Impl:     m.Push,
+			Artifact:  tt.artifact,
+			Image:     tt.image,
+			Timestamp: &initTime,
+			Impl:      m.Push,
 		}
 		_, resolver, err := ecresolver.NewRegistry(nil)
 		if err != nil {
@@ -158,4 +196,34 @@ func TestPush(t *testing.T) {
 		// check that everything was called
 		m.AssertExpectations(t)
 	}
+}
+
+func compress(in []byte, name string, timestamp time.Time) (out []byte, err error) {
+	byteWriter := bytes.NewBuffer(nil)
+	gzipWriter := gzip.NewWriter(byteWriter)
+	defer gzipWriter.Close()
+	tarWriter := tar.NewWriter(gzipWriter)
+	defer tarWriter.Close()
+	if err := addBytesToTarWriter(in, name, tarWriter, timestamp); err != nil {
+		return nil, err
+	}
+	tarWriter.Close()
+	gzipWriter.Close()
+	out = byteWriter.Bytes()
+	return
+}
+
+func addBytesToTarWriter(b []byte, name string, tw *tar.Writer, timestamp time.Time) error {
+	// create the header
+	header := &tar.Header{
+		Name:    name,
+		Size:    int64(len(b)),
+		Mode:    0644,
+		ModTime: timestamp,
+	}
+	if err := tw.WriteHeader(header); err != nil {
+		return fmt.Errorf("error writing tar header: %v", err)
+	}
+	_, err := tw.Write(b)
+	return err
 }

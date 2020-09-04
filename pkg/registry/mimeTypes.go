@@ -47,10 +47,8 @@ func GetLayerMediaType(actualType string, format Format) string {
 	switch format {
 	case FormatArtifacts:
 		t = actualType
-	case FormatContainer:
-		t = MimeTypeOCIImageLayerGzip
 	case FormatLegacy:
-		t = MimeTypeOCIImageLayer
+		t = MimeTypeOCIImageLayerGzip
 	}
 	return t
 }
