@@ -76,8 +76,6 @@ var pushCmd = &cobra.Command{
 			format = registry.FormatArtifacts
 		case "legacy":
 			format = registry.FormatLegacy
-		case "container":
-			format = registry.FormatContainer
 		default:
 			log.Fatalf("unknown format: %v", formatStr)
 		}
@@ -106,7 +104,7 @@ func pushInit() {
 	pushCmd.Flags().StringVar(&osname, "OS", registry.DefaultOS, "os to use in generated config, if config not provided")
 	pushCmd.Flags().StringVar(&arch, "arch", registry.DefaultArch, "arch to use in generated config, if config not provided")
 	pushCmd.Flags().StringSliceVar(&disks, "disk", []string{}, "path to additional disk and type, may be invoked multiple times")
-	pushCmd.Flags().StringVar(&formatStr, "format", "artifacts", "which format to use, one of: artifacts, legacy, container")
+	pushCmd.Flags().StringVar(&formatStr, "format", "artifacts", "which format to use, one of: artifacts, legacy")
 	pushCmd.Flags().BoolVar(&debug, "debug", false, "debug output")
 	pushCmd.Flags().BoolVar(&verbose, "verbose", false, "verbose output")
 }

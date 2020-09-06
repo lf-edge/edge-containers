@@ -11,6 +11,7 @@ import (
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
 	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
+	"github.com/lf-edge/edge-containers/pkg/store"
 
 	"github.com/containerd/containerd/images"
 	digest "github.com/opencontainers/go-digest"
@@ -51,6 +52,8 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, resolver ecres
 
 	fileStore := content.NewFileStore(dir)
 	defer fileStore.Close()
+	decompressStore := store.NewDecompressStore(fileStore)
+
 	allowedMediaTypes := AllMimeTypes()
 
 	if verbose {
@@ -58,7 +61,7 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, resolver ecres
 	}
 	pullOpts = append(pullOpts, oras.WithAllowedMediaTypes(allowedMediaTypes))
 	// pull the images
-	desc, layers, err := p.Impl(ctx, resolver, p.Image, fileStore, pullOpts...)
+	desc, layers, err := p.Impl(ctx, resolver, p.Image, decompressStore, pullOpts...)
 	if err != nil {
 		return nil, nil, err
 	}

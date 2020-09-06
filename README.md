@@ -9,13 +9,15 @@ It is inspired directly by [ORAS](https://github.com/deislabs/oras) and leverage
 It can store the images in multiple formats:
 
 * `artifacts` (default): leverage full artifacts mime types, with each layer a different artifact
-* `legacy`: standard mime-types and configs, with each layer a different artifact
-* `container`: artifacts placed within a filesystem in an OCI container image, leveraging annotations to indicate where each artifact is
+* `legacy`: standard mime-types and configs, with each layer a different artifact; if the standard type is `.tar`, then the single file is tarred; if the standard type is `tar+gzip`, then the single file is tarred and gzipped.
+
+Note that the `legacy` format actually looks identical to putting the artifacts in a filesystem in an OCI container
+image. We simply leverage annotations to indicate where each artifact is.
+
+Because the `legacy` format replicates a standard OCI container image, you can create it using standard docker
+tools as well. An example is shown below.
 
 In all cases, annotations are used as well.
-
-Because the `container` format uses a standard OCI container image, you can create it using standard docker
-tools as well. An example is shown below.
 
 ## Usage
 
@@ -54,12 +56,6 @@ For the `legacy` format:
 eci push --format legacy --root path/to/root.img:raw --kernel path/to/kernel --initrd path/to/initrd --disk path/to/disk1:iso --disk path/to/disk2:vmdk ... --config path/to/config lfedge/eci-nginx:ubuntu-1804-11715
 ```
 
-For the `container` format:
-
-```sh
-eci push --format container --root path/to/root.img:raw --kernel path/to/kernel --initrd path/to/initrd --disk path/to/disk1:iso --disk path/to/disk2:vmdk ... --config path/to/config lfedge/eci-nginx:ubuntu-1804-11715
-```
-
 The `eci` command will take care of setting the correct mime types and annotations on all of the objects.
 
 Note that disks, both root and additional, **must** have the file name, following by a `:` and the disk type,
@@ -72,8 +68,8 @@ is of type qcow2:
 
 #### Using Standard Docker
 
-Standard docker tools do not support the `artifacts` or `legacy` format. However, you can build and push
-using the `container` format with standard docker tools. However, docker does not support
+Standard docker tools do not support the `artifacts` format. However, you can build and push
+using the `legacy` format with standard docker tools. However, docker does not support
 adding annotations to the manifest, except using experimental tools.
 
 To support standard docker tools, we support reading the annotations from the image labels,
@@ -124,7 +120,7 @@ And then run:
 docker build -t lfedge/eci-nginx:ubuntu-1804-11715 .
 ```
 
-Note: if you use the `container` format, your config file needs to be in a specific format
+Note: if you use the `legacy` format, your config file needs to be in a specific format
 for docker to recognize it. This utility builds it for you, and it is recommended you accept
 the default. However, if you provide `--config`, you can override it. Use at your own risk.
 
@@ -217,17 +213,14 @@ How does the pull client - and anything else that might want to pull the artifac
 It could be one of:
 
 * a normal OCI container image
-* a normal OCI container image with VM artifacts inside
-* a legacy format image from this library/utility
+* a legacy format image from this library/utility, which is identical to a normal OCI container image with VM artifacts inside
 * an artifacts format image from this library/utility
 
 The parsing process is as follows:
 
 1. Retrieve the manifest.
-1. If the layers have the special `mediaType`, it is an ECI in artifacts format.
-1. If the layers have the special annotations, it is an ECI in legacy format.
-1. If the manifest has the special annotations, it is an ECI in container format.
-1. If the config has the special labels, it is an ECI in container format.
+1. If the layers have the special `mediaType`, it is an ECI in artifacts format; use them as is.
+1. If the layers have the special annotations, it is an ECI in legacy format; extract using `tar`/`gzip`
 1. It is a regular OCI image.
 
 ## Go Library
