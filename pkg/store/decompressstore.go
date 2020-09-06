@@ -13,6 +13,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	// Blocksize size of each slice of bytes read in each write through. Technically not a "block" size, but just like it.
+	Blocksize = 10240
+)
+
 // DecompressWriter store to decompress content and extract from tar, if needed
 type DecompressStore struct {
 	writer content.Ingester
@@ -98,7 +103,7 @@ func NewUntarWriter(writer content.Writer) content.Writer {
 			}
 			// write out the untarred data
 			for {
-				b := make([]byte, 1024, 1024)
+				b := make([]byte, Blocksize, Blocksize)
 				n, err := tr.Read(b)
 				if err != nil && err != io.EOF {
 					log.Errorf("UntarWriter file data read error: %v\n", err)
@@ -195,7 +200,7 @@ func NewGunzipWriter(writer content.Writer) (content.Writer, error) {
 		gw.gr = gr
 		// write out the uncompressed data
 		for {
-			b := make([]byte, 1024, 1024)
+			b := make([]byte, Blocksize, Blocksize)
 			n, err := gr.Read(b)
 			if err != nil && err != io.EOF {
 				log.Errorf("GunzipWriter data read error: %v\n", err)
