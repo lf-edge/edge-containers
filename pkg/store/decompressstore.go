@@ -20,11 +20,11 @@ const (
 
 // DecompressWriter store to decompress content and extract from tar, if needed
 type DecompressStore struct {
-	writer content.Ingester
+	ingester content.Ingester
 }
 
-func NewDecompressStore(writer content.Ingester) DecompressStore {
-	return DecompressStore{writer}
+func NewDecompressStore(ingester content.Ingester) DecompressStore {
+	return DecompressStore{ingester}
 }
 
 // Writer get a writer
@@ -36,7 +36,7 @@ func (d DecompressStore) Writer(ctx context.Context, opts ...content.WriterOpt) 
 		writer content.Writer
 		err    error
 	)
-	writer, err = d.writer.Writer(ctx, opts...)
+	writer, err = d.ingester.Writer(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

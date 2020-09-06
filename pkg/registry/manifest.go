@@ -185,6 +185,36 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...L
 			labels[fmt.Sprintf(AnnotationDiskIndexPathPattern, i)] = fmt.Sprintf("/%s", name)
 		}
 	}
+	for _, other := range a.Other {
+		if other != "" {
+			customMediaType = MimeTypeECIOther
+			filepath = other
+			name = path.Base(filepath)
+			layerHash = ""
+			mediaType = GetLayerMediaType(customMediaType, format)
+			if format == FormatLegacy {
+				tgzfile := path.Join(tmpDir, name)
+				tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+				}
+				filepath = tgzfile
+				layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
+			}
+			desc, err = fileStore.Add(name, mediaType, filepath)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error adding %s other at %s: %v", name, filepath, err)
+			}
+			desc.Annotations[AnnotationMediaType] = customMediaType
+			pushContents = append(pushContents, desc)
+			if layerHash == "" {
+				layerHash = desc.Digest
+			}
+			layers = append(layers, layerHash)
+
+			labels[AnnotationOther] = fmt.Sprintf("/%s", name)
+		}
+	}
 
 	// was a config specified?
 	if a.Config != "" {

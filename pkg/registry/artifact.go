@@ -23,11 +23,18 @@ type Disk struct {
 }
 
 type Artifact struct {
+	// Kernel path to the kernel file
 	Kernel string
+	// Initrd path to the initrd file
 	Initrd string
+	// Config path to the config
 	Config string
-	Root   *Disk
-	Disks  []*Disk
+	// Root path to the root disk and its type
+	Root *Disk
+	// Disks paths and types for additional disks
+	Disks []*Disk
+	// Other other items that did not have appropriate annotations
+	Other []string
 }
 
 var NameToType = map[string]DiskType{

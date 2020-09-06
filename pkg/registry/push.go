@@ -89,7 +89,6 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 	if err != nil {
 		return "", fmt.Errorf("could not build manifest: %v", err)
 	}
-
 	pushOpts = append(pushOpts, oras.WithConfig(manifest.Config))
 
 	if verbose {

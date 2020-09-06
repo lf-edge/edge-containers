@@ -65,7 +65,7 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, resolver ecres
 	if err != nil {
 		return nil, nil, err
 	}
-	// now process the layers to fill in our artifact
+	// process the layers to fill in our artifact
 	artifact := &Artifact{
 		Disks: []*Disk{},
 	}
