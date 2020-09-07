@@ -12,6 +12,7 @@ const (
 	MimeTypeECIDiskQcow2      = "application/vnd.lfedge.disk.layer.v1+qcow2"
 	MimeTypeECIDiskOva        = "application/vnd.lfedge.disk.layer.v1+ova"
 	MimeTypeECIDiskVhdx       = "application/vnd.lfedge.disk.layer.v1+vhdx"
+	MimeTypeECIOther          = "application/vnd.lfedge.eci.layer.v1"
 	MimeTypeOCIImageConfig    = "application/vnd.oci.image.config.v1+json"
 	MimeTypeOCIImageLayer     = "application/vnd.oci.image.layer.v1.tar"
 	MimeTypeOCIImageLayerGzip = "application/vnd.oci.image.layer.v1.tar+gzip"
@@ -32,6 +33,7 @@ var allTypes = []string{
 	MimeTypeECIDiskQcow2,
 	MimeTypeECIDiskOva,
 	MimeTypeECIDiskVhdx,
+	MimeTypeECIOther,
 	MimeTypeOCIImageConfig,
 	MimeTypeOCIImageLayer,
 	MimeTypeOCIImageLayerGzip,

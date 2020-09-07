@@ -7,4 +7,5 @@ const (
 	AnnotationInitrdPath           = "org.lfedge.eci.artifact.initrd"
 	AnnotationKernelPath           = "org.lfedge.eci.artifact.kernel"
 	AnnotationDiskIndexPathPattern = "org.lfedge.eci.artifact.disk-%d"
+	AnnotationOther                = "org.lfedge.eci.other"
 )
