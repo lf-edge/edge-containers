@@ -154,15 +154,15 @@ func TestPush(t *testing.T) {
 		// no image name
 		{&registry.Artifact{}, "", registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("must have valid image ref")},
 		// missing kernel file
-		{&registry.Artifact{Kernel: "abcd.kernel"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding kernel")},
+		{&registry.Artifact{Kernel: "abcd.kernel"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding kernel")},
 		// missing initrd file
-		{&registry.Artifact{Initrd: "abcd.initrd"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding initrd")},
+		{&registry.Artifact{Initrd: "abcd.initrd"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding initrd")},
 		// missing config file
-		{&registry.Artifact{Config: "abcd.config"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding config")},
+		{&registry.Artifact{Config: "abcd.config"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding config")},
 		// missing root disk
-		{&registry.Artifact{Root: &registry.Disk{Path: "abcd.diskroot", Type: rootDiskType}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding disk-root")},
+		{&registry.Artifact{Root: &registry.Disk{Path: "abcd.diskroot", Type: rootDiskType}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding disk-root")},
 		// missing additional disk
-		{&registry.Artifact{Disks: []*registry.Disk{{Path: "abcd.diskone", Type: registry.Vmdk}}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("error adding disk-0")},
+		{&registry.Artifact{Disks: []*registry.Disk{{Path: "abcd.diskone", Type: registry.Vmdk}}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding disk-0")},
 		// normal without legacy
 		{validArtifact, testImageName, registry.FormatArtifacts, expectedDescriptors, string(desc.Digest), nil, nil},
 		// normal with legacy
