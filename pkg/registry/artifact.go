@@ -27,6 +27,11 @@ type Source interface {
 	GetContent() []byte
 	// GetName returns the target filename
 	GetName() string
+	// GetDigest returns the digest if provided directly; will not calculate for other sources.
+	// Format is "sha256:<hash>"
+	GetDigest() string
+	// GetSize returns the size if provided directly; will not calculate for other sources.
+	GetSize() int64
 }
 
 // FileSource implements a Source for a file
@@ -44,12 +49,18 @@ func (f *FileSource) GetContent() []byte {
 func (f *FileSource) GetName() string {
 	return path.Base(f.Path)
 }
+func (f *FileSource) GetDigest() string {
+	return ""
+}
+func (f *FileSource) GetSize() int64 {
+	return 0
+}
 
 // MemorySource implements a Source for raw data
 type MemorySource struct {
 	// Content the data
 	Content []byte
-	// Name name of file to save
+	// Name of file to save
 	Name string
 }
 
@@ -61,6 +72,38 @@ func (m *MemorySource) GetContent() []byte {
 }
 func (m *MemorySource) GetName() string {
 	return m.Name
+}
+func (m *MemorySource) GetDigest() string {
+	return ""
+}
+func (m *MemorySource) GetSize() int64 {
+	return 0
+}
+
+// HashSource implements a source that has the hash directly, to enable creating a raw manifest
+type HashSource struct {
+	// Hash the sha256 hash
+	Hash string
+	// Name of file to save
+	Name string
+	// Size size of the target
+	Size int64
+}
+
+func (h *HashSource) GetPath() string {
+	return ""
+}
+func (h *HashSource) GetContent() []byte {
+	return nil
+}
+func (h *HashSource) GetName() string {
+	return h.Name
+}
+func (h *HashSource) GetDigest() string {
+	return h.Hash
+}
+func (h *HashSource) GetSize() int64 {
+	return h.Size
 }
 
 type Disk struct {
