@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path"
 	"time"
@@ -19,14 +20,9 @@ import (
 // Manifest create the manifest for the given Artifact.
 func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...LegacyOpt) (*ocispec.Manifest, ctrcontent.Provider, error) {
 	var (
-		desc            ocispec.Descriptor
-		mediaType       string
-		customMediaType string
-		role            string
-		name            string
-		filepath        string
-		err             error
-		lOpts           = legacyInfo{}
+		desc  ocispec.Descriptor
+		err   error
+		lOpts = legacyInfo{}
 	)
 
 	for _, o := range legacyOpts {
@@ -56,26 +52,33 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...L
 		}
 	}
 
-	if a.Kernel != "" {
-		role = RoleKernel
-		name = "kernel"
+	if a.Kernel != nil {
+		role := RoleKernel
+		name := "kernel"
 		layerHash = ""
-		customMediaType = MimeTypeECIKernel
-		filepath = a.Kernel
-		mediaType = GetLayerMediaType(customMediaType, format)
-		if format == FormatLegacy {
-			tgzfile := path.Join(tmpDir, name)
-			tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+		customMediaType := MimeTypeECIKernel
+		mediaType := GetLayerMediaType(customMediaType, format)
+		switch {
+		case a.Kernel.GetPath() != "":
+			filepath := a.Kernel.GetPath()
+			if format == FormatLegacy {
+				tgzfile := path.Join(tmpDir, name)
+				tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+				}
+				filepath = tgzfile
+				// convert the tarHash into a digest
+				layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
 			}
-			filepath = tgzfile
-			// convert the tarHash into a digest
-			layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
-		}
-		desc, err = fileStore.Add(name, mediaType, filepath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error adding %s at %s: %v", name, filepath, err)
+			desc, err = fileStore.Add(name, mediaType, filepath)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error adding %s from file at %s: %v", name, filepath, err)
+			}
+		case a.Kernel.GetContent() != nil:
+			desc = memStore.Add(name, mediaType, a.Kernel.GetContent())
+		default:
+			return nil, nil, errors.New("no valid source for kernel")
 		}
 		desc.Annotations[AnnotationMediaType] = customMediaType
 		desc.Annotations[AnnotationRole] = role
@@ -89,25 +92,32 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...L
 		labels[AnnotationKernelPath] = fmt.Sprintf("/%s", name)
 	}
 
-	if a.Initrd != "" {
-		role = RoleInitrd
-		name = "initrd"
+	if a.Initrd != nil {
+		role := RoleInitrd
+		name := "initrd"
 		layerHash = ""
-		customMediaType = MimeTypeECIInitrd
-		filepath = a.Initrd
-		mediaType = GetLayerMediaType(customMediaType, format)
-		if format == FormatLegacy {
-			tgzfile := path.Join(tmpDir, name)
-			tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+		customMediaType := MimeTypeECIInitrd
+		mediaType := GetLayerMediaType(customMediaType, format)
+		switch {
+		case a.Initrd.GetPath() != "":
+			filepath := a.Initrd.GetPath()
+			if format == FormatLegacy {
+				tgzfile := path.Join(tmpDir, name)
+				tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+				}
+				filepath = tgzfile
+				layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
 			}
-			filepath = tgzfile
-			layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
-		}
-		desc, err = fileStore.Add(name, mediaType, filepath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error adding %s at %s: %v", name, filepath, err)
+			desc, err = fileStore.Add(name, mediaType, filepath)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error adding %s at %s: %v", name, filepath, err)
+			}
+		case a.Initrd.GetContent() != nil:
+			desc = memStore.Add(name, mediaType, a.Initrd.GetContent())
+		default:
+			return nil, nil, errors.New("no valid source for initrd")
 		}
 		desc.Annotations[AnnotationMediaType] = customMediaType
 		desc.Annotations[AnnotationRole] = role
@@ -122,24 +132,34 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...L
 	}
 
 	if disk := a.Root; disk != nil {
-		role = RoleRootDisk
-		customMediaType = TypeToMime[disk.Type]
-		filepath = disk.Path
-		name := fmt.Sprintf("disk-root-%s", path.Base(filepath))
-		layerHash = ""
-		mediaType = GetLayerMediaType(customMediaType, format)
-		if format == FormatLegacy {
-			tgzfile := path.Join(tmpDir, name)
-			tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
-			}
-			filepath = tgzfile
-			layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
+		if disk.Source == nil {
+			return nil, nil, errors.New("root disk does not have valid source")
 		}
-		desc, err = fileStore.Add(name, mediaType, filepath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error adding %s disk at %s: %v", name, filepath, err)
+		role := RoleRootDisk
+		name := fmt.Sprintf("disk-root-%s", disk.Source.GetName())
+		customMediaType := TypeToMime[disk.Type]
+		mediaType := GetLayerMediaType(customMediaType, format)
+		layerHash = ""
+		switch {
+		case disk.Source.GetPath() != "":
+			filepath := disk.Source.GetPath()
+			if format == FormatLegacy {
+				tgzfile := path.Join(tmpDir, name)
+				tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+				}
+				filepath = tgzfile
+				layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
+			}
+			desc, err = fileStore.Add(name, mediaType, filepath)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error adding %s disk at %s: %v", name, filepath, err)
+			}
+		case disk.Source.GetContent() != nil:
+			desc = memStore.Add(name, mediaType, disk.Source.GetContent())
+		default:
+			return nil, nil, errors.New("no valid source for initrd")
 		}
 		desc.Annotations[AnnotationMediaType] = customMediaType
 		desc.Annotations[AnnotationRole] = role
@@ -154,24 +174,34 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...L
 	}
 	for i, disk := range a.Disks {
 		if disk != nil {
-			role = RoleAdditionalDisk
-			customMediaType = TypeToMime[disk.Type]
-			filepath = disk.Path
-			name := fmt.Sprintf("disk-%d-%s", i, path.Base(filepath))
-			layerHash = ""
-			mediaType = GetLayerMediaType(customMediaType, format)
-			if format == FormatLegacy {
-				tgzfile := path.Join(tmpDir, name)
-				tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
-				}
-				filepath = tgzfile
-				layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
+			role := RoleAdditionalDisk
+			name := fmt.Sprintf("disk-%d-%s", i, disk.Source.GetName())
+			customMediaType := TypeToMime[disk.Type]
+			mediaType := GetLayerMediaType(customMediaType, format)
+			if disk.Source == nil {
+				return nil, nil, fmt.Errorf("disk %d does not have valid source", i)
 			}
-			desc, err = fileStore.Add(name, mediaType, filepath)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error adding %s disk at %s: %v", name, filepath, err)
+			layerHash = ""
+			switch {
+			case disk.Source.GetPath() != "":
+				filepath := disk.Source.GetPath()
+				if format == FormatLegacy {
+					tgzfile := path.Join(tmpDir, name)
+					tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
+					if err != nil {
+						return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+					}
+					filepath = tgzfile
+					layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
+				}
+				desc, err = fileStore.Add(name, mediaType, filepath)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error adding %s disk at %s: %v", name, filepath, err)
+				}
+			case disk.Source.GetContent() != nil:
+				desc = memStore.Add(name, mediaType, disk.Source.GetContent())
+			default:
+				return nil, nil, fmt.Errorf("no valid source for disk %d", i)
 			}
 			desc.Annotations[AnnotationMediaType] = customMediaType
 			desc.Annotations[AnnotationRole] = role
@@ -186,25 +216,33 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...L
 		}
 	}
 	for _, other := range a.Other {
-		if other != "" {
-			customMediaType = MimeTypeECIOther
-			filepath = other
-			name = path.Base(filepath)
+		if other != nil {
+			customMediaType := MimeTypeECIOther
+			name := other.GetName()
 			layerHash = ""
-			mediaType = GetLayerMediaType(customMediaType, format)
-			if format == FormatLegacy {
-				tgzfile := path.Join(tmpDir, name)
-				tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+			mediaType := GetLayerMediaType(customMediaType, format)
+			switch {
+			case other.GetPath() != "":
+				filepath := other.GetPath()
+				if format == FormatLegacy {
+					tgzfile := path.Join(tmpDir, name)
+					tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
+					if err != nil {
+						return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+					}
+					filepath = tgzfile
+					layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
 				}
-				filepath = tgzfile
-				layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
+				desc, err = fileStore.Add(name, mediaType, filepath)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error adding %s disk at %s: %v", name, filepath, err)
+				}
+			case other.GetContent() != nil:
+				desc = memStore.Add(name, mediaType, other.GetContent())
+			default:
+				return nil, nil, errors.New("no valid source for other")
 			}
-			desc, err = fileStore.Add(name, mediaType, filepath)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error adding %s other at %s: %v", name, filepath, err)
-			}
+
 			desc.Annotations[AnnotationMediaType] = customMediaType
 			pushContents = append(pushContents, desc)
 			if layerHash == "" {
@@ -217,14 +255,31 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...L
 	}
 
 	// was a config specified?
-	if a.Config != "" {
-		name = "config.json"
-		customMediaType = MimeTypeECIConfig
-		filepath = a.Config
-		mediaType = GetConfigMediaType(customMediaType, format)
-		desc, err = fileStore.Add(name, mediaType, filepath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error adding %s config at %s: %v", name, filepath, err)
+	if a.Config != nil {
+		name := "config.json"
+		customMediaType := MimeTypeECIConfig
+		mediaType := GetConfigMediaType(customMediaType, format)
+
+		switch {
+		case a.Config.GetPath() != "":
+			filepath := a.Config.GetPath()
+			if format == FormatLegacy {
+				tgzfile := path.Join(tmpDir, name)
+				tarHash, _, err := tgz.Compress(filepath, name, tgzfile, lOpts.timestamp)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error creating tgz file for %s: %v", filepath, err)
+				}
+				filepath = tgzfile
+				layerHash = digest.NewDigestFromBytes(digest.SHA256, tarHash)
+			}
+			desc, err = fileStore.Add(name, mediaType, filepath)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error adding %s config at %s: %v", name, filepath, err)
+			}
+		case a.Config.GetContent() != nil:
+			desc = memStore.Add(name, mediaType, a.Config.GetContent())
+		default:
+			return nil, nil, errors.New("no valid source for config")
 		}
 		desc.Annotations[AnnotationMediaType] = customMediaType
 	} else {
@@ -258,8 +313,8 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, legacyOpts ...L
 			return nil, nil, fmt.Errorf("error marshaling config to json: %v", err)
 		}
 
-		name = "config.json"
-		mediaType = MimeTypeOCIImageConfig
+		name := "config.json"
+		mediaType := MimeTypeOCIImageConfig
 		desc = memStore.Add(name, mediaType, configBytes)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error adding OCI config: %v", err)

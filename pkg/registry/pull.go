@@ -80,18 +80,18 @@ func (p *Puller) Pull(dir string, verbose bool, writer io.Writer, resolver ecres
 		mediaType := l.Annotations[AnnotationMediaType]
 		switch l.Annotations[AnnotationRole] {
 		case RoleKernel:
-			artifact.Kernel = filepath
+			artifact.Kernel = &FileSource{Path: filepath}
 		case RoleInitrd:
-			artifact.Initrd = filepath
+			artifact.Initrd = &FileSource{Path: filepath}
 		case RoleRootDisk:
 			artifact.Root = &Disk{
-				Path: filepath,
-				Type: MimeToType[mediaType],
+				Source: &FileSource{Path: filepath},
+				Type:   MimeToType[mediaType],
 			}
 		case AnnotationMediaType:
 			artifact.Disks = append(artifact.Disks, &Disk{
-				Path: filepath,
-				Type: MimeToType[mediaType],
+				Source: &FileSource{Path: filepath},
+				Type:   MimeToType[mediaType],
 			})
 		}
 	}

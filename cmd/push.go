@@ -59,10 +59,10 @@ var pushCmd = &cobra.Command{
 
 		// construct and pass along
 		artifact := &registry.Artifact{
-			Kernel: kernelFile,
-			Initrd: initrdFile,
+			Kernel: &registry.FileSource{Path: kernelFile},
+			Initrd: &registry.FileSource{Path: initrdFile},
 			Root:   rootDisk,
-			Config: configFile,
+			Config: &registry.FileSource{Path: configFile},
 			Disks:  addlDisks,
 		}
 		pusher := registry.Pusher{
@@ -121,7 +121,7 @@ func diskToStruct(path string) (*registry.Disk, error) {
 		return nil, fmt.Errorf("unknown disk type: %s", parts[1])
 	}
 	return &registry.Disk{
-		Path: parts[0],
-		Type: diskType,
+		Source: &registry.FileSource{Path: parts[0]},
+		Type:   diskType,
 	}, nil
 }
