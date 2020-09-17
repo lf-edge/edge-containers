@@ -48,10 +48,10 @@ var pullCmd = &cobra.Command{
 		if rootDisk == nil {
 			fmt.Printf("\troot: \n")
 		} else {
-			fmt.Printf("\troot: %s %v\n", rootDisk.Path, rootDisk.Type)
+			fmt.Printf("\troot: %s %v\n", rootDisk.Source.GetPath(), rootDisk.Type)
 		}
 		for i, d := range artifact.Disks {
-			fmt.Printf("\tadditional disk %d: %s %v\n", i, d.Path, d.Type)
+			fmt.Printf("\tadditional disk %d: %s %v\n", i, d.Source.GetPath(), d.Type)
 		}
 	},
 }

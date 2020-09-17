@@ -119,11 +119,10 @@ func TestPush(t *testing.T) {
 		}
 	}
 	validArtifact := &registry.Artifact{
-		Config: inputs["config"].Fullname(),
-		Kernel: inputs["kernel"].Fullname(),
-		Initrd: inputs["initrd"].Fullname(),
-		Root:   &registry.Disk{Path: inputs["root"].Fullname(), Type: rootDiskType},
-		Disks:  []*registry.Disk{{Path: inputs["disk1"].Fullname(), Type: diskOneType}},
+		Kernel: &registry.FileSource{Path: inputs["kernel"].Fullname()},
+		Initrd: &registry.FileSource{Path: inputs["initrd"].Fullname()},
+		Root:   &registry.Disk{Source: &registry.FileSource{Path: inputs["root"].Fullname()}, Type: rootDiskType},
+		Disks:  []*registry.Disk{{Source: &registry.FileSource{Path: inputs["disk1"].Fullname()}, Type: diskOneType}},
 	}
 	// expected descriptors to be returned in normal mode
 	expectedDescriptors := []ocispec.Descriptor{
@@ -154,15 +153,15 @@ func TestPush(t *testing.T) {
 		// no image name
 		{&registry.Artifact{}, "", registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("must have valid image ref")},
 		// missing kernel file
-		{&registry.Artifact{Kernel: "abcd.kernel"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding kernel")},
+		{&registry.Artifact{Kernel: &registry.FileSource{Path: "abcd.kernel"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding kernel")},
 		// missing initrd file
-		{&registry.Artifact{Initrd: "abcd.initrd"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding initrd")},
+		{&registry.Artifact{Initrd: &registry.FileSource{Path: "abcd.initrd"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding initrd")},
 		// missing config file
-		{&registry.Artifact{Config: "abcd.config"}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding config")},
+		{&registry.Artifact{Config: &registry.FileSource{Path: "abcd.config"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding config")},
 		// missing root disk
-		{&registry.Artifact{Root: &registry.Disk{Path: "abcd.diskroot", Type: rootDiskType}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding disk-root")},
+		{&registry.Artifact{Root: &registry.Disk{Source: &registry.FileSource{Path: "abcd.diskroot"}, Type: rootDiskType}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding disk-root")},
 		// missing additional disk
-		{&registry.Artifact{Disks: []*registry.Disk{{Path: "abcd.diskone", Type: registry.Vmdk}}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding disk-0")},
+		{&registry.Artifact{Disks: []*registry.Disk{{Source: &registry.FileSource{Path: "abcd.diskone"}, Type: registry.Vmdk}}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding disk-0")},
 		// normal without legacy
 		{validArtifact, testImageName, registry.FormatArtifacts, expectedDescriptors, string(desc.Digest), nil, nil},
 		// normal with legacy

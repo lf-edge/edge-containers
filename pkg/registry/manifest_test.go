@@ -33,11 +33,11 @@ func TestManifest(t *testing.T) {
 		}
 	}
 	validArtifact := &registry.Artifact{
-		Config: inputs["config"].Fullname(),
-		Kernel: inputs["kernel"].Fullname(),
-		Initrd: inputs["initrd"].Fullname(),
-		Root:   &registry.Disk{Path: inputs["root"].Fullname(), Type: rootDiskType},
-		Disks:  []*registry.Disk{{Path: inputs["disk1"].Fullname(), Type: diskOneType}},
+		Config: nil,
+		Kernel: &registry.FileSource{Path: inputs["kernel"].Fullname()},
+		Initrd: &registry.FileSource{Path: inputs["initrd"].Fullname()},
+		Root:   &registry.Disk{Source: &registry.FileSource{Path: inputs["root"].Fullname()}, Type: rootDiskType},
+		Disks:  []*registry.Disk{{Source: &registry.FileSource{Path: inputs["disk1"].Fullname()}, Type: diskOneType}},
 	}
 	// expected descriptors to be returned in normal mode
 	expectedDescriptors := []ocispec.Descriptor{
@@ -61,15 +61,15 @@ func TestManifest(t *testing.T) {
 		err      error
 	}{
 		// missing kernel file
-		{&registry.Artifact{Kernel: "abcd.kernel"}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding kernel")},
+		{&registry.Artifact{Kernel: &registry.FileSource{Path: "abcd.kernel"}}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding kernel")},
 		// missing initrd file
-		{&registry.Artifact{Initrd: "abcd.initrd"}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding initrd")},
+		{&registry.Artifact{Initrd: &registry.FileSource{Path: "abcd.initrd"}}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding initrd")},
 		// missing config file
-		{&registry.Artifact{Config: "abcd.config"}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding config")},
+		{&registry.Artifact{Config: &registry.FileSource{Path: "abcd.config"}}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding config")},
 		// missing root disk
-		{&registry.Artifact{Root: &registry.Disk{Path: "abcd.diskroot", Type: rootDiskType}}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding disk-root")},
+		{&registry.Artifact{Root: &registry.Disk{Source: &registry.FileSource{Path: "abcd.diskroot"}, Type: rootDiskType}}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding disk-root")},
 		// missing additional disk
-		{&registry.Artifact{Disks: []*registry.Disk{{Path: "abcd.diskone", Type: registry.Vmdk}}}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding disk-0")},
+		{&registry.Artifact{Disks: []*registry.Disk{{Source: &registry.FileSource{Path: "abcd.diskone"}, Type: registry.Vmdk}}}, registry.FormatArtifacts, []ocispec.Descriptor{}, fmt.Errorf("error adding disk-0")},
 		// normal without legacy
 		{validArtifact, registry.FormatArtifacts, expectedDescriptors, nil},
 		// normal with legacy
@@ -100,9 +100,9 @@ func TestManifest(t *testing.T) {
 		case len(manifest.Layers) != len(tt.contents):
 			t.Errorf("%d: mismatched layers length, actual %v, expected %v", i, manifest.Layers, tt.contents)
 		default:
-			for i, l := range manifest.Layers {
-				if !equalLayer(l, tt.contents[i]) {
-					t.Errorf("%d: mismatched layer actual %v, expected %v", i, l, tt.contents[i])
+			for j, l := range manifest.Layers {
+				if !equalLayer(l, tt.contents[j]) {
+					t.Errorf("%d: %d: mismatched layer actual %v, expected %v", i, j, l, tt.contents[j])
 				}
 			}
 		}
