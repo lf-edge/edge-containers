@@ -36,7 +36,7 @@ var pullCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("unexpected error when created NewRegistry resolver: %v", err)
 		}
-		desc, artifact, err := puller.Pull(pullDir, verbose, os.Stdout, resolver)
+		desc, artifact, err := puller.Pull(registry.DirTarget{Dir: pullDir}, verbose, os.Stdout, resolver)
 		if err != nil {
 			log.Fatalf("error pulling from registry: %v", err)
 		}
