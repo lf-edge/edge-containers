@@ -72,8 +72,11 @@ func NewUntarWriter(writer content.Writer) content.Writer {
 				continue
 			}
 			// write out the untarred data
+			// we create the slice *before* the loop to avoid tons of garbage collection
+			// we just need to be extra careful to not read past the end, because
+			// it will not be zeroed out
+			b := make([]byte, Blocksize, Blocksize)
 			for {
-				b := make([]byte, Blocksize, Blocksize)
 				n, err := tr.Read(b)
 				if err != nil && err != io.EOF {
 					log.Errorf("UntarWriter file data read error: %v\n", err)
@@ -105,8 +108,11 @@ func NewGunzipWriter(writer content.Writer) content.Writer {
 			return
 		}
 		// write out the uncompressed data
+		// we create the slice *before* the loop to avoid tons of garbage collection
+		// we just need to be extra careful to not read past the end, because
+		// it will not be zeroed out
+		b := make([]byte, Blocksize, Blocksize)
 		for {
-			b := make([]byte, Blocksize, Blocksize)
 			n, err := gr.Read(b)
 			if err != nil && err != io.EOF {
 				log.Errorf("GunzipWriter data read error: %v\n", err)

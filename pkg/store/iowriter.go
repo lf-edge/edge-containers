@@ -20,8 +20,11 @@ func NewIoWriterWrapper(writer io.Writer, kind string) content.Writer {
 	ioc := NewIoContentWriter(writer)
 	return NewPassthroughWriter(ioc, func(pw *PassthroughWriter) {
 		// write out the uncompressed data
+		// we create the slice *before* the loop to avoid tons of garbage collection
+		// we just need to be extra careful to not read past the end, because
+		// it will not be zeroed out
+		b := make([]byte, Blocksize, Blocksize)
 		for {
-			b := make([]byte, Blocksize, Blocksize)
 			n, err := pw.Reader.Read(b)
 			if err != nil && err != io.EOF {
 				log.Errorf("WriterWrapper for %s: data read error: %v\n", kind, err)

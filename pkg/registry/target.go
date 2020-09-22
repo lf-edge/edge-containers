@@ -9,10 +9,6 @@ import (
 	"github.com/lf-edge/edge-containers/pkg/store"
 )
 
-const (
-	Blocksize = 10240
-)
-
 // IngesterCloser an ingester that also has a Close(). May return nil
 type IngesterCloser interface {
 	ctrcontent.Ingester
