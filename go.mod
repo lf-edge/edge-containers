@@ -37,4 +37,4 @@ require (
 )
 
 replace github.com/docker/docker => github.com/docker/docker v0.7.3-0.20190826074503-38ab9da00309
-replace golang.org/x/sys => golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
+replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200331124033-c3d80250170d
