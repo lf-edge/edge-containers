@@ -11,9 +11,9 @@ import (
 // IoContentWriter writer that wraps an io.Writer, so the results can be streamed to
 // an open io.Writer. For example, can be used to pull a layer and write it to a file, or device.
 type IoContentWriter struct {
-	writer    io.Writer
-	digester  digest.Digester
-	size      int64
+	writer   io.Writer
+	digester digest.Digester
+	size     int64
 }
 
 // NewIoContentWriter create a new IoContentWriter. blocksize is the size of the block to copy,
@@ -21,20 +21,25 @@ type IoContentWriter struct {
 // whatever golang defaults to with io.Copy
 func NewIoContentWriter(writer io.Writer, blocksize int) content.Writer {
 	ioc := &IoContentWriter{
-		writer:    writer,
-		digester:  digest.Canonical.Digester(),
+		writer:   writer,
+		digester: digest.Canonical.Digester(),
 	}
-	return NewPassthroughWriter(ioc, func(r io.Reader, w io.Writer, done chan<- error ) {
- 		// write out the data to the io writer
+	return NewPassthroughWriter(ioc, func(r io.Reader, w io.Writer, done chan<- error) {
+		// write out the data to the io writer
 		var (
 			err error
 		)
+		// writer of nil means to do nothing
+		if ioc.writer == nil {
+			done <- err
+			return
+		}
 		if blocksize == 0 {
- 			_, err = io.Copy(w, r)
- 		} else {
- 			b := make([]byte, blocksize, blocksize)
- 			_, err = io.CopyBuffer(w, r, b)
- 		}
+			_, err = io.Copy(w, r)
+		} else {
+			b := make([]byte, blocksize, blocksize)
+			_, err = io.CopyBuffer(w, r, b)
+		}
 		done <- err
 	})
 }
