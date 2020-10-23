@@ -49,6 +49,8 @@ type FilesTarget struct {
 	Disks []io.Writer
 	// Other writer where to write the other elements
 	Other []io.Writer
+	// BlockSize how big a blocksize to use when reading/writing. Defaults to whatever io.Copy uses
+	BlockSize int
 }
 
 // Ingester get the IngesterCloser
@@ -76,18 +78,18 @@ func (w FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (
 	switch desc.Annotations[AnnotationRole] {
 	case RoleKernel:
 		if w.Kernel != nil {
-			return store.NewIoContentWriter(w.Kernel, 0), nil
+			return store.NewIoContentWriter(w.Kernel, w.BlockSize), nil
 		}
 	case RoleInitrd:
 		if w.Initrd != nil {
-			return store.NewIoContentWriter(w.Initrd, 0), nil
+			return store.NewIoContentWriter(w.Initrd, w.BlockSize), nil
 		}
 	case RoleRootDisk:
 		if w.Root != nil {
-			return store.NewIoContentWriter(w.Root, 0), nil
+			return store.NewIoContentWriter(w.Root, w.BlockSize), nil
 		}
 	case RoleAdditionalDisk:
 	}
 	// nothing, so return something that dumps to /var/null
-	return store.NewIoContentWriter(nil, 0), nil
+	return store.NewIoContentWriter(nil, w.BlockSize), nil
 }
