@@ -4,11 +4,11 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"strings"
 
 	"github.com/containerd/containerd/content"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -60,72 +60,87 @@ func (d DecompressStore) Writer(ctx context.Context, opts ...content.WriterOpt) 
 
 // untarWriter wrap a writer with an untar, so that the stream is untarred
 func NewUntarWriter(writer content.Writer) content.Writer {
-	return NewPassthroughWriter(writer, func(pw *PassthroughWriter) {
-		tr := tar.NewReader(pw.Reader)
+	return NewPassthroughWriter(writer, func(r io.Reader, w io.Writer, done chan<- error) {
+		tr := tar.NewReader(r)
+		var err error
 		for {
 			_, err := tr.Next()
 			if err == io.EOF {
+				// clear the error, since we do not pass an io.EOF
+				err = nil
 				break // End of archive
 			}
 			if err != nil {
-				log.Errorf("UntarWriter header read error: %v\n", err)
-				continue
+				// pass the error on
+				err = fmt.Errorf("UntarWriter tar file header read error: %v", err)
+				break
 			}
 			// write out the untarred data
+			// we can handle io.EOF, just go to the next file
+			// any other errors should stop and get reported
 			for {
 				b := make([]byte, Blocksize, Blocksize)
-				n, err := tr.Read(b)
+				var n int
+				n, err = tr.Read(b)
 				if err != nil && err != io.EOF {
-					log.Errorf("UntarWriter file data read error: %v\n", err)
-					continue
+					err = fmt.Errorf("UntarWriter file data read error: %v\n", err)
+					break
 				}
 				l := n
 				if n > len(b) {
 					l = len(b)
 				}
-				if err := pw.UnderlyingWrite(b[:l]); err != nil {
-					log.Errorf("UntarWriter: error writing to underlying writer: %v", err)
+				if _, err = w.Write(b[:l]); err != nil {
+					err = fmt.Errorf("UntarWriter error writing to underlying writer: %v", err)
 					break
 				}
 				if err == io.EOF {
+					// go to the next file
 					break
 				}
 			}
+			// did we break with a non-nil and non-EOF error?
+			if err != nil && err != io.EOF {
+				break
+			}
 		}
-		pw.Done <- true
+		done <- err
 	})
 }
 
 // gunzipWriter wrap a writer with a gunzip, so that the stream is gunzipped
 func NewGunzipWriter(writer content.Writer) content.Writer {
-	return NewPassthroughWriter(writer, func(pw *PassthroughWriter) {
-		gr, err := gzip.NewReader(pw.Reader)
+	return NewPassthroughWriter(writer, func(r io.Reader, w io.Writer, done chan<- error) {
+		gr, err := gzip.NewReader(r)
 		if err != nil {
-			log.Errorf("error creating gzip reader: %v", err)
+			done <- fmt.Errorf("error creating gzip reader: %v", err)
 			return
 		}
 		// write out the uncompressed data
 		for {
 			b := make([]byte, Blocksize, Blocksize)
-			n, err := gr.Read(b)
+			var n int
+			n, err = gr.Read(b)
 			if err != nil && err != io.EOF {
-				log.Errorf("GunzipWriter data read error: %v\n", err)
+				err = fmt.Errorf("GunzipWriter data read error: %v\n", err)
 				continue
 			}
 			l := n
 			if n > len(b) {
 				l = len(b)
 			}
-			if err := pw.UnderlyingWrite(b[:l]); err != nil {
-				log.Errorf("GunzipWriter: error writing to underlying writer: %v", err)
+			if _, err = w.Write(b[:l]); err != nil {
+				err = fmt.Errorf("GunzipWriter: error writing to underlying writer: %v", err)
 				break
 			}
 			if err == io.EOF {
+				// clear the error
+				err = nil
 				break
 			}
 		}
 		gr.Close()
-		pw.Done <- true
+		done <- err
 	})
 }
 

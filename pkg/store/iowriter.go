@@ -6,50 +6,37 @@ import (
 
 	"github.com/containerd/containerd/content"
 	"github.com/opencontainers/go-digest"
-	log "github.com/sirupsen/logrus"
 )
 
+// IoContentWriter writer that wraps an io.Writer, so the results can be streamed to
+// an open io.Writer. For example, can be used to pull a layer and write it to a file, or device.
 type IoContentWriter struct {
-	writer   io.Writer
-	digester digest.Digester
-	size     int64
+	writer    io.Writer
+	digester  digest.Digester
+	size      int64
 }
 
-// NewIoWriterWrapper wrap a simple io.Writer
-func NewIoWriterWrapper(writer io.Writer, kind string) content.Writer {
-	ioc := NewIoContentWriter(writer)
-	return NewPassthroughWriter(ioc, func(pw *PassthroughWriter) {
-		// write out the uncompressed data
-		for {
-			b := make([]byte, Blocksize, Blocksize)
-			n, err := pw.Reader.Read(b)
-			if err != nil && err != io.EOF {
-				log.Errorf("WriterWrapper for %s: data read error: %v\n", kind, err)
-				continue
-			}
-			l := n
-			if n > len(b) {
-				l = len(b)
-			}
-
-			if err := pw.UnderlyingWrite(b[:l]); err != nil {
-				log.Errorf("WriterWrapper(%s): error writing to underlying writer: %v", kind, err)
-				break
-			}
-			if err == io.EOF {
-				break
-			}
-		}
-		pw.Done <- true
-	})
-}
-
-// NewIoContentWriter turn a plain io.Writer into a content.Writer
-func NewIoContentWriter(writer io.Writer) content.Writer {
-	return &IoContentWriter{
-		writer:   writer,
-		digester: digest.Canonical.Digester(),
+// NewIoContentWriter create a new IoContentWriter. blocksize is the size of the block to copy,
+// in bytes, between the parent and child. The default, when 0, is to simply use
+// whatever golang defaults to with io.Copy
+func NewIoContentWriter(writer io.Writer, blocksize int) content.Writer {
+	ioc := &IoContentWriter{
+		writer:    writer,
+		digester:  digest.Canonical.Digester(),
 	}
+	return NewPassthroughWriter(ioc, func(r io.Reader, w io.Writer, done chan<- error ) {
+ 		// write out the data to the io writer
+		var (
+			err error
+		)
+		if blocksize == 0 {
+ 			_, err = io.Copy(w, r)
+ 		} else {
+ 			b := make([]byte, blocksize, blocksize)
+ 			_, err = io.CopyBuffer(w, r, b)
+ 		}
+		done <- err
+	})
 }
 
 func (w *IoContentWriter) Write(p []byte) (n int, err error) {
