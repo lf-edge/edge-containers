@@ -76,18 +76,18 @@ func (w FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (
 	switch desc.Annotations[AnnotationRole] {
 	case RoleKernel:
 		if w.Kernel != nil {
-			return store.NewIoWriterWrapper(w.Kernel, "kernel"), nil
+			return store.NewIoContentWriter(w.Kernel, 0), nil
 		}
 	case RoleInitrd:
 		if w.Initrd != nil {
-			return store.NewIoWriterWrapper(w.Initrd, "initrd"), nil
+			return store.NewIoContentWriter(w.Initrd, 0), nil
 		}
 	case RoleRootDisk:
 		if w.Root != nil {
-			return store.NewIoWriterWrapper(w.Root, "root"), nil
+			return store.NewIoContentWriter(w.Root, 0), nil
 		}
 	case RoleAdditionalDisk:
 	}
 	// nothing, so return something that dumps to /var/null
-	return store.NewIoWriterWrapper(nil, ""), nil
+	return store.NewIoContentWriter(nil, 0), nil
 }

@@ -17,24 +17,28 @@ type PassthroughWriter struct {
 	size               int64
 	underlyingDigester digest.Digester
 	underlyingSize     int64
-	// Reader reader that the go routine should read from to get data to process
-	Reader *io.PipeReader
-	// Done channel for go routine to indicate when it is done. If it does not,
-	// it might block forever
-	Done chan bool
+	reader *io.PipeReader
+	done chan error
 }
 
-func NewPassthroughWriter(writer content.Writer, f func(pw *PassthroughWriter)) content.Writer {
+// NewPassthroughWriter creates a pass-through writer that allows for processing
+// the content via an arbitrary function. The function should do whatever processing it
+// wants, reading from the Reader to the Writer. When done, it must indicate via
+// sending an error or nil to the Done
+func NewPassthroughWriter(writer content.Writer, f func(r io.Reader, w io.Writer, done chan<- error)) content.Writer {
 	r, w := io.Pipe()
 	pw := &PassthroughWriter{
 		writer:             writer,
 		pipew:              w,
 		digester:           digest.Canonical.Digester(),
 		underlyingDigester: digest.Canonical.Digester(),
-		Reader:             r,
-		Done:               make(chan bool, 1),
+		reader:             r,
+		done:               make(chan error, 1),
 	}
-	go f(pw)
+	uw := &underlyingWriter{
+ 		pw: pw,
+ 	}
+	go f(r, uw, pw.done)
 	return pw
 }
 
@@ -62,8 +66,11 @@ func (pw *PassthroughWriter) Digest() digest.Digest {
 // ErrAlreadyExists aborts the writer.
 func (pw *PassthroughWriter) Commit(ctx context.Context, size int64, expected digest.Digest, opts ...content.Opt) error {
 	pw.pipew.Close()
-	_ = <-pw.Done
-	pw.Reader.Close()
+	err := <-pw.done
+	pw.reader.Close()
+	if err != nil && err != io.EOF {
+		return err
+	}
 	return pw.writer.Commit(ctx, pw.underlyingSize, pw.underlyingDigester.Digest(), opts...)
 }
 
@@ -77,12 +84,20 @@ func (pw *PassthroughWriter) Truncate(size int64) error {
 	return pw.writer.Truncate(size)
 }
 
-// UnderlyingWrite write to the underlying writer
-func (pw *PassthroughWriter) UnderlyingWrite(p []byte) error {
-	if _, err := pw.writer.Write(p); err != nil {
-		return err
-	}
-	pw.underlyingSize += int64(len(p))
-	pw.underlyingDigester.Hash().Write(p)
-	return nil
+// underlyingWriter implementation of io.Writer to write to the underlying
+ // io.Writer
+ type underlyingWriter struct {
+ 	pw *PassthroughWriter
+ }
+
+// Write write to the underlying writer
+func (u *underlyingWriter) Write(p []byte) (int, error) {
+ 	n, err := u.pw.writer.Write(p)
+ 	if err != nil {
+ 		return 0, err
+ 	}
+
+	u.pw.underlyingSize += int64(len(p))
+	u.pw.underlyingDigester.Hash().Write(p)
+	return n, nil
 }
