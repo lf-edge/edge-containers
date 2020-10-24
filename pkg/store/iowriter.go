@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"io"
+	"io/ioutil"
 
 	"github.com/containerd/containerd/content"
 	"github.com/opencontainers/go-digest"
@@ -20,8 +21,12 @@ type IoContentWriter struct {
 // in bytes, between the parent and child. The default, when 0, is to simply use
 // whatever golang defaults to with io.Copy
 func NewIoContentWriter(writer io.Writer, blocksize int) content.Writer {
+	w := writer
+	if w == nil {
+		w = ioutil.Discard
+	}
 	ioc := &IoContentWriter{
-		writer:   writer,
+		writer:   w,
 		digester: digest.Canonical.Digester(),
 	}
 	return NewPassthroughWriter(ioc, func(r io.Reader, w io.Writer, done chan<- error) {
@@ -29,11 +34,6 @@ func NewIoContentWriter(writer io.Writer, blocksize int) content.Writer {
 		var (
 			err error
 		)
-		// writer of nil means to do nothing
-		if ioc.writer == nil {
-			done <- err
-			return
-		}
 		if blocksize == 0 {
 			_, err = io.Copy(w, r)
 		} else {
@@ -45,20 +45,12 @@ func NewIoContentWriter(writer io.Writer, blocksize int) content.Writer {
 }
 
 func (w *IoContentWriter) Write(p []byte) (n int, err error) {
-	var (
-		l int
-	)
-	if w.writer != nil {
-		l, err = w.writer.Write(p)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		l = len(p)
-		// nothing to write
+	n, err = w.writer.Write(p)
+	if err != nil {
+		return 0, err
 	}
-	w.digester.Hash().Write(p[:l])
-	w.size += int64(l)
+	w.digester.Hash().Write(p[:n])
+	w.size += int64(n)
 	return
 }
 
