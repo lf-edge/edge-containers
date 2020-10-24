@@ -90,8 +90,8 @@ func NewUntarWriter(writer content.Writer) content.Writer {
 				if n > len(b) {
 					l = len(b)
 				}
-				if _, err = w.Write(b[:l]); err != nil {
-					err = fmt.Errorf("UntarWriter error writing to underlying writer: %v", err)
+				if _, err2 := w.Write(b[:l]); err2 != nil {
+					err = fmt.Errorf("UntarWriter error writing to underlying writer: %v", err2)
 					break
 				}
 				if err == io.EOF {
@@ -123,14 +123,14 @@ func NewGunzipWriter(writer content.Writer) content.Writer {
 			n, err = gr.Read(b)
 			if err != nil && err != io.EOF {
 				err = fmt.Errorf("GunzipWriter data read error: %v\n", err)
-				continue
+				break
 			}
 			l := n
 			if n > len(b) {
 				l = len(b)
 			}
-			if _, err = w.Write(b[:l]); err != nil {
-				err = fmt.Errorf("GunzipWriter: error writing to underlying writer: %v", err)
+			if _, err2 := w.Write(b[:l]); err2 != nil {
+				err = fmt.Errorf("GunzipWriter: error writing to underlying writer: %v", err2)
 				break
 			}
 			if err == io.EOF {
