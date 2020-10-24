@@ -17,8 +17,8 @@ type PassthroughWriter struct {
 	size               int64
 	underlyingDigester digest.Digester
 	underlyingSize     int64
-	reader *io.PipeReader
-	done chan error
+	reader             *io.PipeReader
+	done               chan error
 }
 
 // NewPassthroughWriter creates a pass-through writer that allows for processing
@@ -36,8 +36,8 @@ func NewPassthroughWriter(writer content.Writer, f func(r io.Reader, w io.Writer
 		done:               make(chan error, 1),
 	}
 	uw := &underlyingWriter{
- 		pw: pw,
- 	}
+		pw: pw,
+	}
 	go f(r, uw, pw.done)
 	return pw
 }
@@ -85,17 +85,17 @@ func (pw *PassthroughWriter) Truncate(size int64) error {
 }
 
 // underlyingWriter implementation of io.Writer to write to the underlying
- // io.Writer
- type underlyingWriter struct {
- 	pw *PassthroughWriter
- }
+// io.Writer
+type underlyingWriter struct {
+	pw *PassthroughWriter
+}
 
 // Write write to the underlying writer
 func (u *underlyingWriter) Write(p []byte) (int, error) {
- 	n, err := u.pw.writer.Write(p)
- 	if err != nil {
- 		return 0, err
- 	}
+	n, err := u.pw.writer.Write(p)
+	if err != nil {
+		return 0, err
+	}
 
 	u.pw.underlyingSize += int64(len(p))
 	u.pw.underlyingDigester.Hash().Write(p)
