@@ -52,7 +52,7 @@ func TestPull(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error when created NewRegistry resolver: %v", err)
 		}
-		dig, _, err := puller.Pull(registry.DirTarget{"/tmp/foo"}, false, nil, resolver)
+		dig, _, err := puller.Pull(registry.DirTarget{"/tmp/foo"}, 0, false, nil, resolver)
 		switch {
 		case (err != nil && tt.err == nil) || (err == nil && tt.err != nil) || (err != nil && tt.err != nil && !strings.HasPrefix(err.Error(), tt.err.Error())):
 			t.Errorf("%d: mismatched errors, actual %v expected %v", i, err, tt.err)
