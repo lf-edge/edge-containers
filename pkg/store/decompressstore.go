@@ -12,17 +12,19 @@ import (
 )
 
 const (
-	// Blocksize size of each slice of bytes read in each write through. Technically not a "block" size, but just like it.
-	Blocksize = 10240
+	// DefaultBlocksize default size of each slice of bytes read in each write through.
+	// Simply uses the same size as io.Copy()
+	DefaultBlocksize = 32768
 )
 
 // DecompressWriter store to decompress content and extract from tar, if needed
 type DecompressStore struct {
-	ingester content.Ingester
+	ingester  content.Ingester
+	blocksize int
 }
 
-func NewDecompressStore(ingester content.Ingester) DecompressStore {
-	return DecompressStore{ingester}
+func NewDecompressStore(ingester content.Ingester, blocksize int) DecompressStore {
+	return DecompressStore{ingester, blocksize}
 }
 
 // Writer get a writer
@@ -50,16 +52,19 @@ func (d DecompressStore) Writer(ctx context.Context, opts ...content.WriterOpt) 
 	// figure out which writer we need
 	hasGzip, hasTar := checkCompression(desc.MediaType)
 	if hasTar {
-		writer = NewUntarWriter(writer)
+		writer = NewUntarWriter(writer, d.blocksize)
 	}
 	if hasGzip {
-		writer = NewGunzipWriter(writer)
+		writer = NewGunzipWriter(writer, d.blocksize)
 	}
 	return writer, nil
 }
 
-// untarWriter wrap a writer with an untar, so that the stream is untarred
-func NewUntarWriter(writer content.Writer) content.Writer {
+// NewUntarWriter wrap a writer with an untar, so that the stream is untarred
+func NewUntarWriter(writer content.Writer, blocksize int) content.Writer {
+	if blocksize == 0 {
+		blocksize = DefaultBlocksize
+	}
 	return NewPassthroughWriter(writer, func(r io.Reader, w io.Writer, done chan<- error) {
 		tr := tar.NewReader(r)
 		var err error
@@ -78,8 +83,8 @@ func NewUntarWriter(writer content.Writer) content.Writer {
 			// write out the untarred data
 			// we can handle io.EOF, just go to the next file
 			// any other errors should stop and get reported
+			b := make([]byte, blocksize, blocksize)
 			for {
-				b := make([]byte, Blocksize, Blocksize)
 				var n int
 				n, err = tr.Read(b)
 				if err != nil && err != io.EOF {
@@ -108,8 +113,11 @@ func NewUntarWriter(writer content.Writer) content.Writer {
 	})
 }
 
-// gunzipWriter wrap a writer with a gunzip, so that the stream is gunzipped
-func NewGunzipWriter(writer content.Writer) content.Writer {
+// NewGunzipWriter wrap a writer with a gunzip, so that the stream is gunzipped
+func NewGunzipWriter(writer content.Writer, blocksize int) content.Writer {
+	if blocksize == 0 {
+		blocksize = DefaultBlocksize
+	}
 	return NewPassthroughWriter(writer, func(r io.Reader, w io.Writer, done chan<- error) {
 		gr, err := gzip.NewReader(r)
 		if err != nil {
@@ -117,8 +125,8 @@ func NewGunzipWriter(writer content.Writer) content.Writer {
 			return
 		}
 		// write out the uncompressed data
+		b := make([]byte, blocksize, blocksize)
 		for {
-			b := make([]byte, Blocksize, Blocksize)
 			var n int
 			n, err = gr.Read(b)
 			if err != nil && err != io.EOF {

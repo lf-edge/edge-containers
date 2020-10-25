@@ -8,12 +8,14 @@ import (
 
 	"github.com/lf-edge/edge-containers/pkg/registry"
 	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
+	"github.com/lf-edge/edge-containers/pkg/store"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var (
-	pullDir string
+	pullDir   string
+	blocksize int
 )
 
 var pullCmd = &cobra.Command{
@@ -36,7 +38,7 @@ var pullCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("unexpected error when created NewRegistry resolver: %v", err)
 		}
-		desc, artifact, err := puller.Pull(registry.DirTarget{Dir: pullDir}, verbose, os.Stdout, resolver)
+		desc, artifact, err := puller.Pull(registry.DirTarget{Dir: pullDir}, blocksize, verbose, os.Stdout, resolver)
 		if err != nil {
 			log.Fatalf("error pulling from registry: %v", err)
 		}
@@ -63,6 +65,7 @@ func pullInit() {
 	}
 
 	pullCmd.Flags().StringVar(&pullDir, "dir", cwd, "directory where to install the ECI, optional")
+	pullCmd.Flags().IntVar(&blocksize, "blocksize", store.DefaultBlocksize, "blocksize to use for gunzip/untar")
 	pullCmd.Flags().BoolVar(&debug, "debug", false, "debug output")
 	pullCmd.Flags().BoolVar(&verbose, "verbose", false, "verbose output")
 }
