@@ -6,7 +6,6 @@ import (
 
 	ctrcontent "github.com/containerd/containerd/content"
 	"github.com/deislabs/oras/pkg/content"
-	"github.com/lf-edge/edge-containers/pkg/store"
 )
 
 // IngesterCloser an ingester that also has a Close(). May return nil
@@ -74,18 +73,18 @@ func (w FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (
 	switch desc.Annotations[AnnotationRole] {
 	case RoleKernel:
 		if w.Kernel != nil {
-			return store.NewIoContentWriter(w.Kernel, w.BlockSize), nil
+			return content.NewIoContentWriter(w.Kernel, content.WithBlocksize(w.BlockSize)), nil
 		}
 	case RoleInitrd:
 		if w.Initrd != nil {
-			return store.NewIoContentWriter(w.Initrd, w.BlockSize), nil
+			return content.NewIoContentWriter(w.Initrd, content.WithBlocksize(w.BlockSize)), nil
 		}
 	case RoleRootDisk:
 		if w.Root != nil {
-			return store.NewIoContentWriter(w.Root, w.BlockSize), nil
+			return content.NewIoContentWriter(w.Root, content.WithBlocksize(w.BlockSize)), nil
 		}
 	case RoleAdditionalDisk:
 	}
 	// nothing, so return something that dumps to /var/null
-	return store.NewIoContentWriter(nil, w.BlockSize), nil
+	return content.NewIoContentWriter(nil, content.WithBlocksize(w.BlockSize)), nil
 }
