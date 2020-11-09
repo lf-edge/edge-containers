@@ -11,7 +11,7 @@ require (
 	github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b // indirect
 	github.com/containerd/ttrpc v1.0.2 // indirect
 	github.com/containerd/typeurl v1.0.1 // indirect
-	github.com/deislabs/oras v0.8.2-0.20201002163557-6414398e5145
+	github.com/deislabs/oras v0.8.2-0.20201109161318-2ca946426597
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
@@ -37,4 +37,5 @@ require (
 )
 
 replace github.com/docker/docker => github.com/docker/docker v0.7.3-0.20190826074503-38ab9da00309
+
 replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200331124033-c3d80250170d
