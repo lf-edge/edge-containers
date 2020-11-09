@@ -46,6 +46,8 @@ type FilesTarget struct {
 	Other []io.Writer
 	// BlockSize how big a blocksize to use when reading/writing. Defaults to whatever io.Copy uses
 	BlockSize int
+	// AcceptHash if set to true, accept the hash in the descriptor as is, i.e. do not recalculate it
+	AcceptHash bool
 }
 
 // Ingester get the IngesterCloser
@@ -69,22 +71,29 @@ func (w FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (
 	}
 	desc := wOpts.Desc
 
+	writerOpts := []content.WriterOpt{
+		content.WithBlocksize(w.BlockSize),
+	}
+	if w.AcceptHash {
+		writerOpts = append(writerOpts, content.WithInputHash(desc.Digest))
+		writerOpts = append(writerOpts, content.WithOutputHash(desc.Digest))
+	}
 	// check if it meets the requirements
 	switch desc.Annotations[AnnotationRole] {
 	case RoleKernel:
 		if w.Kernel != nil {
-			return content.NewIoContentWriter(w.Kernel, content.WithBlocksize(w.BlockSize)), nil
+			return content.NewIoContentWriter(w.Kernel, writerOpts...), nil
 		}
 	case RoleInitrd:
 		if w.Initrd != nil {
-			return content.NewIoContentWriter(w.Initrd, content.WithBlocksize(w.BlockSize)), nil
+			return content.NewIoContentWriter(w.Initrd, writerOpts...), nil
 		}
 	case RoleRootDisk:
 		if w.Root != nil {
-			return content.NewIoContentWriter(w.Root, content.WithBlocksize(w.BlockSize)), nil
+			return content.NewIoContentWriter(w.Root, writerOpts...), nil
 		}
 	case RoleAdditionalDisk:
 	}
 	// nothing, so return something that dumps to /var/null
-	return content.NewIoContentWriter(nil, content.WithBlocksize(w.BlockSize)), nil
+	return content.NewIoContentWriter(nil, writerOpts...), nil
 }
