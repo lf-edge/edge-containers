@@ -46,13 +46,18 @@ func (d DecompressStore) Writer(ctx context.Context, opts ...ctrcontent.WriterOp
 		}
 	}
 	desc := wOpts.Desc
+	// determine if we pass it blocksize, only if positive
+	writerOpts := []content.WriterOpt{}
+	if d.blocksize > 0 {
+		writerOpts = append(writerOpts, content.WithBlocksize(d.blocksize))
+	}
 	// figure out which writer we need
 	hasGzip, hasTar := checkCompression(desc.MediaType)
 	if hasTar {
-		writer = content.NewUntarWriter(writer, content.WithBlocksize(d.blocksize))
+		writer = content.NewUntarWriter(writer, writerOpts...)
 	}
 	if hasGzip {
-		writer = content.NewGunzipWriter(writer, content.WithBlocksize(d.blocksize))
+		writer = content.NewGunzipWriter(writer, writerOpts...)
 	}
 	return writer, nil
 }
