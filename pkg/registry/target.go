@@ -71,8 +71,9 @@ func (w FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (
 	}
 	desc := wOpts.Desc
 
-	writerOpts := []content.WriterOpt{
-		content.WithBlocksize(w.BlockSize),
+	writerOpts := []content.WriterOpt{}
+	if w.BlockSize > 0 {
+		writerOpts = append(writerOpts, content.WithBlocksize(w.BlockSize))
 	}
 	if w.AcceptHash {
 		writerOpts = append(writerOpts, content.WithInputHash(desc.Digest))
