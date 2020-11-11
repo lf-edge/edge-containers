@@ -89,6 +89,8 @@ github.com/deislabs/oras v0.8.2-0.20201002163557-6414398e5145 h1:Y5SQeDCYQ8TDypv
 github.com/deislabs/oras v0.8.2-0.20201002163557-6414398e5145/go.mod h1:H4n+o7ExkIC+7gJjPLkJwUPEZbB4GJdBLaZlfDhPYIg=
 github.com/deislabs/oras v0.8.2-0.20201109161318-2ca946426597 h1:hGyqdzKOk2lNby8GOjpKAzivdhvu7pR2tSpr3gA1MHI=
 github.com/deislabs/oras v0.8.2-0.20201109161318-2ca946426597/go.mod h1:H4n+o7ExkIC+7gJjPLkJwUPEZbB4GJdBLaZlfDhPYIg=
+github.com/deislabs/oras v0.8.2-0.20201110191325-f1caa175232f h1:4WL9FhS0+vVZjgmnYVQvUUCvxi+lrrNS0ZArDi71ZK0=
+github.com/deislabs/oras v0.8.2-0.20201110191325-f1caa175232f/go.mod h1:H4n+o7ExkIC+7gJjPLkJwUPEZbB4GJdBLaZlfDhPYIg=
 github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba/go.mod h1:dV8lFg6daOBZbT6/BDGIz6Y3WFGn8juu6G+CQ6LHtl0=
 github.com/dgrijalva/jwt-go v0.0.0-20170104182250-a601269ab70c/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dnaeon/go-vcr v1.0.1/go.mod h1:aBB1+wY4s93YsC3HHjMBMrwTj2R9FHDzUr9KyGc8n1E=
