@@ -61,7 +61,7 @@ func (f FilesTarget) Close() error {
 }
 
 // Writer get a writer
-func (w FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (ctrcontent.Writer, error) {
+func (f FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (ctrcontent.Writer, error) {
 	// we have to reprocess the opts to find the desc
 	var wOpts ctrcontent.WriterOpts
 	for _, opt := range opts {
@@ -72,26 +72,26 @@ func (w FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (
 	desc := wOpts.Desc
 
 	writerOpts := []content.WriterOpt{}
-	if w.BlockSize > 0 {
-		writerOpts = append(writerOpts, content.WithBlocksize(w.BlockSize))
+	if f.BlockSize > 0 {
+		writerOpts = append(writerOpts, content.WithBlocksize(f.BlockSize))
 	}
-	if w.AcceptHash {
+	if f.AcceptHash {
 		writerOpts = append(writerOpts, content.WithInputHash(desc.Digest))
 		writerOpts = append(writerOpts, content.WithOutputHash(desc.Digest))
 	}
 	// check if it meets the requirements
 	switch desc.Annotations[AnnotationRole] {
 	case RoleKernel:
-		if w.Kernel != nil {
-			return content.NewIoContentWriter(w.Kernel, writerOpts...), nil
+		if f.Kernel != nil {
+			return content.NewIoContentWriter(f.Kernel, writerOpts...), nil
 		}
 	case RoleInitrd:
-		if w.Initrd != nil {
-			return content.NewIoContentWriter(w.Initrd, writerOpts...), nil
+		if f.Initrd != nil {
+			return content.NewIoContentWriter(f.Initrd, writerOpts...), nil
 		}
 	case RoleRootDisk:
-		if w.Root != nil {
-			return content.NewIoContentWriter(w.Root, writerOpts...), nil
+		if f.Root != nil {
+			return content.NewIoContentWriter(f.Root, writerOpts...), nil
 		}
 	case RoleAdditionalDisk:
 	}
