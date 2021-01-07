@@ -1,6 +1,7 @@
 SHELL=/bin/sh
 BINARY ?= eci
 PACKAGE_NAME?=github.com/lf-edge/edge-containers
+GOLANGCI_VERSION=v1.34.1
 GIT_VERSION?=$(shell git log -1 --format="%h")
 VERSION?=$(GIT_VERSION)
 RELEASE_TAG ?= $(shell git tag --points-at HEAD)
@@ -94,7 +95,7 @@ fmt:
 
 golangci-lint: $(LINTER)
 $(LINTER):
-	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.17.1
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_VERSION)/install.sh | sh -s -- -b $(GOBIN) v1.34.1
 
 golint:
 ifeq (, $(shell which golint))
