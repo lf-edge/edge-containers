@@ -58,11 +58,15 @@ var pushCmd = &cobra.Command{
 		}
 
 		// construct and pass along
+		var config registry.Source
+		if configFile != "" {
+			config = &registry.FileSource{Path: configFile}
+		}
 		artifact := &registry.Artifact{
 			Kernel: &registry.FileSource{Path: kernelFile},
 			Initrd: &registry.FileSource{Path: initrdFile},
 			Root:   rootDisk,
-			Config: &registry.FileSource{Path: configFile},
+			Config: config,
 			Disks:  addlDisks,
 		}
 		pusher := registry.Pusher{
