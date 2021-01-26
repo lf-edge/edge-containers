@@ -5,15 +5,14 @@ import (
 	"log"
 	"os"
 
+	"github.com/deislabs/oras/pkg/content"
 	"github.com/lf-edge/edge-containers/pkg/registry"
-	"github.com/lf-edge/edge-containers/pkg/store"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var (
-	pullDir   string
-	blocksize int
+	pullDir string
 )
 
 var pullCmd = &cobra.Command{
@@ -59,7 +58,7 @@ func pullInit() {
 	}
 
 	pullCmd.Flags().StringVar(&pullDir, "dir", cwd, "directory where to install the ECI, optional")
-	pullCmd.Flags().IntVar(&blocksize, "blocksize", store.DefaultBlocksize, "blocksize to use for gunzip/untar")
+	pullCmd.Flags().IntVar(&blocksize, "blocksize", content.DefaultBlocksize, "blocksize to use for gunzip/untar")
 	pullCmd.Flags().BoolVar(&debug, "debug", false, "debug output")
 	pullCmd.Flags().BoolVar(&verbose, "verbose", false, "verbose output")
 }
