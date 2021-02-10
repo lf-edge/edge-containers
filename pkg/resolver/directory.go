@@ -4,16 +4,13 @@ package resolver
  Provides a github.com/containerd/containerd/remotes#Resolver that resolves
  to a local filesystem directory.
 
- The format in the directory is one file for each blob, named `sha256:<hash>`.
- Even manifest and index files are saved as blob files. In addition,
- The image reference named is sha256 hashed and hex-encoded. That is used as
- a filename for a file that contains the OCI spec descriptor for the root manifest.
+ The format in the directory is the OCI spec for an image layout,
+ at https://github.com/opencontainers/image-spec/blob/master/image-layout.md
 
- For example, if the image name is docker.io/foo/bar:1.2.3, that can be hashed as
- sha256:24b80c31240b48117e63156af80951a987c43de267050c7c768dd4d20d5e9a3b
+ The image reference name is stored in the root index.json, with the image name stored
+ as the annotation for image name, i.e. org.opencontainers.image.ref.name
 
- A file will be created named sha256:24b80c31240b48117e63156af80951a987c43de267050c7c768dd4d20d5e9a3b
- whose contents will be the descriptor for the root.
+ The spec for annotations is available https://github.com/opencontainers/image-spec/blob/master/annotations.md
 */
 
 import (
@@ -35,9 +32,8 @@ import (
 )
 
 type Directory struct {
-	dir      string
-	blobsDir string
-	ctx      context.Context
+	dir string
+	ctx context.Context
 }
 
 func NewDirectory(ctx context.Context, dir string) (context.Context, *Directory, error) {
@@ -45,11 +41,7 @@ func NewDirectory(ctx context.Context, dir string) (context.Context, *Directory,
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return ctx, nil, fmt.Errorf("could not create directory %s: %v", dir, err)
 	}
-	blobsDir := path.Join(dir, "blobs/sha256")
-	if err := os.MkdirAll(blobsDir, 0755); err != nil {
-		return ctx, nil, fmt.Errorf("could not create directory %s: %v", dir, err)
-	}
-	return ctx, &Directory{dir: dir, blobsDir: blobsDir, ctx: ctx}, nil
+	return ctx, &Directory{dir: dir, ctx: ctx}, nil
 }
 
 func (d *Directory) Resolve(ctx context.Context, ref string) (name string, desc ocispec.Descriptor, err error) {
@@ -81,11 +73,11 @@ func (d *Directory) Resolve(ctx context.Context, ref string) (name string, desc 
 }
 
 func (d Directory) Fetcher(ctx context.Context, ref string) (remotes.Fetcher, error) {
-	return directoryFetcher{ref, d.dir, d.blobsDir}, nil
+	return directoryFetcher{ref, d.dir}, nil
 }
 
 func (d *Directory) Pusher(ctx context.Context, ref string) (remotes.Pusher, error) {
-	return directoryPusher{ref, d.dir, d.blobsDir}, nil
+	return directoryPusher{ref, d.dir}, nil
 }
 
 func (d *Directory) Finalize(ctx context.Context) error {
@@ -97,19 +89,18 @@ func (d *Directory) Context() context.Context {
 }
 
 type directoryFetcher struct {
-	ref      string
-	dir      string
-	blobsDir string
+	ref string
+	dir string
 }
 
 type directoryPusher struct {
-	ref      string
-	dir      string
-	blobsDir string
+	ref string
+	dir string
 }
 
 func (d directoryFetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
-	filename := path.Join(d.blobsDir, desc.Digest.Encoded())
+	blobsDir := path.Join(d.dir, "blobs", desc.Digest.Algorithm().String())
+	filename := path.Join(blobsDir, desc.Digest.Hex())
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("could not open for reading %s: %v", filename, err)
@@ -118,7 +109,11 @@ func (d directoryFetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (i
 }
 
 func (d directoryPusher) Push(ctx context.Context, desc ocispec.Descriptor) (content.Writer, error) {
-	filename := path.Join(d.blobsDir, desc.Digest.Encoded())
+	blobsDir := path.Join(d.dir, "blobs", desc.Digest.Algorithm().String())
+	if err := os.MkdirAll(blobsDir, 0755); err != nil {
+		return nil, fmt.Errorf("could not create directory %s: %v", blobsDir, err)
+	}
+	filename := path.Join(blobsDir, desc.Digest.Hex())
 	file, err := os.Create(filename)
 	if err != nil {
 		return nil, fmt.Errorf("could not create for writing %s: %v", filename, err)
@@ -134,7 +129,7 @@ func (d directoryPusher) Push(ctx context.Context, desc ocispec.Descriptor) (con
 		file:       file,
 		desc:       desc,
 		isManifest: isManifest,
-		ref:        remotes.MakeRefKey(ctx, desc),
+		ref:        d.ref,
 		indexFile:  path.Join(d.dir, "index.json"),
 	}, nil
 }
@@ -179,6 +174,13 @@ func (d directoryWriter) Commit(ctx context.Context, size int64, expected digest
 	}
 	// when we commit, we also need to write the image file
 	if d.isManifest {
+		// ensure that the name annotation exists
+		if d.desc.Annotations == nil {
+			d.desc.Annotations = map[string]string{}
+		}
+		if value, ok := d.desc.Annotations[ocispec.AnnotationRefName]; !ok || value == "" {
+			d.desc.Annotations[ocispec.AnnotationRefName] = d.ref
+		}
 		// convert the manifest to json bytes and write it to the index.json
 		index := ocispec.Index{
 			Manifests: []ocispec.Descriptor{
