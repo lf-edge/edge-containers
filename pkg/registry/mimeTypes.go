@@ -18,6 +18,7 @@ const (
 	MimeTypeOCIImageLayerGzip   = "application/vnd.oci.image.layer.v1.tar+gzip"
 	MimeTypeOCIImageManifest    = "application/vnd.oci.image.manifest.v1+json"
 	MimeTypeOCIImageIndex       = "application/vnd.oci.image.index.v1+json"
+	MimeTypeDockerImageConfig   = "application/vnd.docker.container.image.v1+json"
 	MimeTypeDockerImageManifest = "application/vnd.docker.distribution.manifest.v2+json"
 	MimeTypeDockerImageIndex    = "application/vnd.docker.distribution.manifest.list.v2+json"
 )
@@ -40,6 +41,7 @@ var allTypes = []string{
 	MimeTypeOCIImageLayerGzip,
 	MimeTypeOCIImageManifest,
 	MimeTypeOCIImageIndex,
+	MimeTypeDockerImageConfig,
 	MimeTypeDockerImageManifest,
 	MimeTypeDockerImageIndex,
 }

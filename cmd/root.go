@@ -50,6 +50,8 @@ func init() {
 	pushInit()
 	rootCmd.AddCommand(pullCmd)
 	pullInit()
+	rootCmd.AddCommand(pullFilesCmd)
+	pullFilesInit()
 
 	rootCmd.PersistentFlags().StringVar(&remote, "remote", "", "remote to use for push/pull, leave blank to use default registry for image")
 	rootCmd.PersistentFlags().StringVar(&ctrNamespace, "namespace", "default", "namespace to use for containerd, ignored for all other remotes")

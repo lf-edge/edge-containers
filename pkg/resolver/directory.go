@@ -98,6 +98,18 @@ type directoryPusher struct {
 	dir string
 }
 
+type rcWrapper struct {
+	rc   io.ReadCloser
+	desc ocispec.Descriptor
+}
+
+func (r rcWrapper) Close() error {
+	return r.rc.Close()
+}
+func (r rcWrapper) Read(b []byte) (int, error) {
+	return r.rc.Read(b)
+}
+
 func (d directoryFetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
 	blobsDir := path.Join(d.dir, "blobs", desc.Digest.Algorithm().String())
 	filename := path.Join(blobsDir, desc.Digest.Hex())
@@ -105,7 +117,7 @@ func (d directoryFetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (i
 	if err != nil {
 		return nil, fmt.Errorf("could not open for reading %s: %v", filename, err)
 	}
-	return file, nil
+	return &rcWrapper{rc: file, desc: desc}, nil
 }
 
 func (d directoryPusher) Push(ctx context.Context, desc ocispec.Descriptor) (content.Writer, error) {

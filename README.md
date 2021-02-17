@@ -9,10 +9,11 @@ It is inspired directly by [ORAS](https://github.com/deislabs/oras) and leverage
 It can store the images in multiple formats:
 
 * `artifacts` (default): leverage full artifacts mime types, with each layer a different artifact
-* `legacy`: standard mime-types and configs, with each layer a different artifact; if the standard type is `.tar`, then the single file is tarred; if the standard type is `tar+gzip`, then the single file is tarred and gzipped.
+* `legacy`: standard mime-types and configs, with each layer optionally a different artifact; if the standard type is `.tar`, then the single file is tarred; if the standard type is `tar+gzip`, then the single file is tarred and gzipped.
 
 Note that the `legacy` format actually looks identical to putting the artifacts in a filesystem in an OCI container
-image. We simply leverage annotations to indicate where each artifact is.
+image. We simply leverage annotations to indicate where each artifact is. Ideally, each artifact - kernel,
+initrd, root disk, other disks, etc. - are their own layers. However, this is not required.
 
 Because the `legacy` format replicates a standard OCI container image, you can create it using standard docker
 tools as well. An example is shown below.
@@ -91,13 +92,21 @@ COPY path/to/disk1 /disk1.iso
 COPY path/to/disk2 /disk2.vmdk
 ```
 
-Then run:
+The above `Dockerfile` places each artifact in its own layer. You can place them all in a single layer as well:
+
+```Dockerfile
+FROM scratch
+COPY path/to/ /
+```
+
+In order to inform any consumer where the artifacts are in the filesystem, aply the appropriate labels when building
+the image. Run:
 
 ```console
 docker build -t lfedge/eci-nginx:ubuntu-1804-11715 --label "org.lfedge.eci.artifact.root"="/root.img" --label "org.lfedge.eci.artifact.kernel"="/kernel" --label "org.lfedge.eci.artifact.initrd"="/initrd" --label "org.lfedge.eci.artifact.disk-1"="/disk1.iso" --label "org.lfedge.eci.artifact.disk-2"="/disk2.vmdk" .
 ```
 
-You can include the labels in the Dockerfile, which makes sense, by adding `LABEL` commands:
+The above line is somewhat messy, so you can include the labels in the Dockerfile, which makes sense, by adding `LABEL` commands:
 
 ```Dockerfile
 FROM scratch
@@ -212,15 +221,16 @@ are the legacy types, while the annotations provide the purpose.
 How does the pull client - and anything else that might want to pull the artifacts - know what it has in hand?
 It could be one of:
 
-* a normal OCI container image
-* a legacy format image from this library/utility, which is identical to a normal OCI container image with VM artifacts inside
 * an artifacts format image from this library/utility
+* a legacy format image from this library/utility, with each artifact as a layer but in tar+gzip format
+*  a normal OCI container image, with VM artifacts inside at arbitrary paths
 
 The parsing process is as follows:
 
 1. Retrieve the manifest.
 1. If the layers have the special `mediaType`, it is an ECI in artifacts format; use them as is.
-1. If the layers have the special annotations, it is an ECI in legacy format; extract using `tar`/`gzip`
+1. If the layers have the special annotations, it is an ECI in legacy format, one artifact per layer; extract using `tar`/`gzip`
+1. If the config has the special annotations, it is an ECI in legacy format, with files at arbitrary locations; extract using `tar`/`gzip`
 1. It is a regular OCI image.
 
 ## Go Library

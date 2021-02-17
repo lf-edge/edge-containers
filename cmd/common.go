@@ -1,6 +1,7 @@
 package cmd
 
 var (
-	debug   bool
-	verbose bool
+	debug     bool
+	verbose   bool
+	blocksize int
 )
