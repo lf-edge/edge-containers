@@ -129,12 +129,7 @@ func (f *FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) 
 	case RoleAdditionalDisk:
 	}
 
-	// check if we have a path inside the container, which would be indicated by the appropriate labels
-	if len(f.config) == 0 {
-		// nothing, so return something that dumps to /var/null
-		return content.NewIoContentWriter(nil, writerOpts...), nil
-	}
-	return nil, nil
+	return content.NewIoContentWriter(nil, writerOpts...), nil
 }
 
 // Writers get writers by filename

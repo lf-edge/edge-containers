@@ -122,6 +122,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/deislabs/oras v0.10.1-0.20210217143853-1c692bb82f62 h1:h0ZPV1Xb1qhRTw6zZGRIiCe766ZMmgQU/1VwZ6STLjA=
 github.com/deislabs/oras v0.10.1-0.20210217143853-1c692bb82f62/go.mod h1:Nj0zrwaHiHfVRSLncZ6dDpmw7CgPpQ/hs/SI7Vw2rsg=
+github.com/deislabs/oras v0.10.1-0.20210225045324-30575f02d3c4 h1:FG7x4m0VG7YvQ/9FQ9Z6T9LdFcTK6+t8iSOYT75ftoU=
+github.com/deislabs/oras v0.10.1-0.20210225045324-30575f02d3c4/go.mod h1:Nj0zrwaHiHfVRSLncZ6dDpmw7CgPpQ/hs/SI7Vw2rsg=
 github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba/go.mod h1:dV8lFg6daOBZbT6/BDGIz6Y3WFGn8juu6G+CQ6LHtl0=
 github.com/dgrijalva/jwt-go v0.0.0-20170104182250-a601269ab70c/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=

@@ -12,7 +12,7 @@ require (
 	github.com/containerd/typeurl v1.0.1 // indirect
 	github.com/coreos/go-etcd v2.0.0+incompatible // indirect
 	github.com/cpuguy83/go-md2man v1.0.10 // indirect
-	github.com/deislabs/oras v0.10.1-0.20210217143853-1c692bb82f62
+	github.com/deislabs/oras v0.10.1-0.20210225045324-30575f02d3c4
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
@@ -32,6 +32,7 @@ require (
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.22.5 // indirect
 	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb // indirect
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	google.golang.org/genproto v0.0.0-20201014134559-03b6142f0dc9 // indirect
 	google.golang.org/grpc v1.33.0 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
