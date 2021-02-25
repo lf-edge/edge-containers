@@ -1,5 +1,10 @@
 package registry
 
+import (
+	"github.com/containerd/containerd/images"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+)
+
 const (
 	MimeTypeECIConfig           = "application/vnd.lfedge.eci.config.v1+json"
 	MimeTypeECIKernel           = "application/vnd.lfedge.eci.kernel.layer.v1+kernel"
@@ -13,16 +18,16 @@ const (
 	MimeTypeECIDiskOva          = "application/vnd.lfedge.disk.layer.v1+ova"
 	MimeTypeECIDiskVhdx         = "application/vnd.lfedge.disk.layer.v1+vhdx"
 	MimeTypeECIOther            = "application/vnd.lfedge.eci.layer.v1"
-	MimeTypeOCIImageConfig      = "application/vnd.oci.image.config.v1+json"
-	MimeTypeOCIImageLayer       = "application/vnd.oci.image.layer.v1.tar"
-	MimeTypeOCIImageLayerGzip   = "application/vnd.oci.image.layer.v1.tar+gzip"
-	MimeTypeOCIImageManifest    = "application/vnd.oci.image.manifest.v1+json"
-	MimeTypeOCIImageIndex       = "application/vnd.oci.image.index.v1+json"
-	MimeTypeDockerImageConfig   = "application/vnd.docker.container.image.v1+json"
-	MimeTypeDockerImageManifest = "application/vnd.docker.distribution.manifest.v2+json"
-	MimeTypeDockerImageIndex    = "application/vnd.docker.distribution.manifest.list.v2+json"
-	MimeTypeDockerLayerTarGzip  = "application/vnd.docker.image.rootfs.diff.tar.gzip"
-	MimeTypeDockerLayerTar      = "application/vnd.docker.image.rootfs.diff.tar"
+	MimeTypeOCIImageConfig      = ocispec.MediaTypeImageConfig
+	MimeTypeOCIImageLayer       = ocispec.MediaTypeImageLayer
+	MimeTypeOCIImageLayerGzip   = ocispec.MediaTypeImageLayerGzip
+	MimeTypeOCIImageManifest    = ocispec.MediaTypeImageManifest
+	MimeTypeOCIImageIndex       = ocispec.MediaTypeImageIndex
+	MimeTypeDockerImageConfig   = images.MediaTypeDockerSchema2Config
+	MimeTypeDockerImageManifest = images.MediaTypeDockerSchema2Manifest
+	MimeTypeDockerImageIndex    = images.MediaTypeDockerSchema2ManifestList
+	MimeTypeDockerLayerTarGzip  = images.MediaTypeDockerSchema2LayerGzip
+	MimeTypeDockerLayerTar      = images.MediaTypeDockerSchema2Layer
 )
 
 var allTypes = []string{
@@ -69,4 +74,12 @@ func GetConfigMediaType(actualType string, format Format) string {
 		return actualType
 	}
 	return MimeTypeOCIImageConfig
+}
+
+func IsConfigType(mediaType string) bool {
+	switch mediaType {
+	case MimeTypeECIConfig, MimeTypeOCIImageConfig, MimeTypeDockerImageConfig:
+		return true
+	}
+	return false
 }
