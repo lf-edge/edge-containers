@@ -106,8 +106,7 @@ func (f *FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) 
 	// save any config
 	// because the config always is pulled first, this should work. But it depends on this remaining the same:
 	// https://github.com/containerd/containerd/blob/178e9a10121b344aece9fe918f6fc4dc4dbde9a3/images/image.go#L346-L347
-	switch desc.MediaType {
-	case MimeTypeECIConfig, MimeTypeOCIImageConfig, MimeTypeDockerImageConfig:
+	if IsConfigType(desc.MediaType) {
 		// process the config, looking for annotations
 		return f.configIngestor(), nil
 	}
