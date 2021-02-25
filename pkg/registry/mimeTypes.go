@@ -21,6 +21,8 @@ const (
 	MimeTypeDockerImageConfig   = "application/vnd.docker.container.image.v1+json"
 	MimeTypeDockerImageManifest = "application/vnd.docker.distribution.manifest.v2+json"
 	MimeTypeDockerImageIndex    = "application/vnd.docker.distribution.manifest.list.v2+json"
+	MimeTypeDockerLayerTarGzip  = "application/vnd.docker.image.rootfs.diff.tar.gzip"
+	MimeTypeDockerLayerTar      = "application/vnd.docker.image.rootfs.diff.tar"
 )
 
 var allTypes = []string{
@@ -44,6 +46,8 @@ var allTypes = []string{
 	MimeTypeDockerImageConfig,
 	MimeTypeDockerImageManifest,
 	MimeTypeDockerImageIndex,
+	MimeTypeDockerLayerTarGzip,
+	MimeTypeDockerLayerTar,
 }
 
 func AllMimeTypes() []string {

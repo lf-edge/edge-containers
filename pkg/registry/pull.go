@@ -60,7 +60,10 @@ func (p *Puller) Pull(target Target, blocksize int, verbose bool, writer io.Writ
 	if verbose {
 		pullOpts = append(pullOpts, oras.WithPullStatusTrack(writer))
 	}
-	pullOpts = append(pullOpts, oras.WithAllowedMediaTypes(allowedMediaTypes), oras.WithPullEmptyNameAllowed(), oras.WithPullByBFS)
+
+	// provide our own cache because of https://github.com/deislabs/oras/issues/225 and https://github.com/deislabs/oras/issues/226
+	store := newCacheStoreFromIngester(decompressStore)
+	pullOpts = append(pullOpts, oras.WithAllowedMediaTypes(allowedMediaTypes), oras.WithPullEmptyNameAllowed(), oras.WithContentProvideIngester(store), oras.WithPullByBFS)
 
 	// pull the images
 	desc, layers, err := p.Impl(ctx, resolver, p.Image, decompressStore, pullOpts...)
