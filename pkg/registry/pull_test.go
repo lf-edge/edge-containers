@@ -10,9 +10,9 @@ import (
 
 	ctrcontent "github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/remotes"
-	"github.com/deislabs/oras/pkg/oras"
 	"github.com/lf-edge/edge-containers/pkg/registry"
 	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
+	"oras.land/oras-go/pkg/oras"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )

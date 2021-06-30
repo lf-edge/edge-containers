@@ -5,10 +5,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/deislabs/oras/pkg/content"
 	"github.com/lf-edge/edge-containers/pkg/registry"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/pkg/content"
 )
 
 var (
