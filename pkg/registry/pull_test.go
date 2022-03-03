@@ -48,7 +48,7 @@ func TestPull(t *testing.T) {
 			Image: tt.image,
 			Impl:  m.Pull,
 		}
-		_, resolver, err := ecresolver.NewRegistry(nil)
+		_, resolver, err := ecresolver.NewRegistry(context.TODO())
 		if err != nil {
 			t.Errorf("unexpected error when created NewRegistry resolver: %v", err)
 		}
