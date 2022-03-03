@@ -30,7 +30,6 @@ const (
 	testImageName = "docker.io/foo/testImage:abc"
 	rootDiskType  = registry.Raw
 	diskOneType   = registry.Qcow2
-	configFile    = "config.json"
 )
 
 var (
@@ -179,7 +178,7 @@ func TestPush(t *testing.T) {
 			Timestamp: &initTime,
 			Impl:      m.Push,
 		}
-		_, resolver, err := ecresolver.NewRegistry(nil)
+		_, resolver, err := ecresolver.NewRegistry(context.TODO())
 		if err != nil {
 			t.Errorf("unexpected error when created NewRegistry resolver: %v", err)
 		}

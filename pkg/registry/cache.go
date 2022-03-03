@@ -30,13 +30,6 @@ type cacheStore struct {
 	ingester content.Ingester
 }
 
-func newCacheStoreFromProvider(provider content.Provider) *cacheStore {
-	return &cacheStore{
-		cache:    orascontent.NewMemoryStore(),
-		provider: provider,
-	}
-}
-
 func newCacheStoreFromIngester(ingester content.Ingester) *cacheStore {
 	return &cacheStore{
 		cache:    orascontent.NewMemoryStore(),
