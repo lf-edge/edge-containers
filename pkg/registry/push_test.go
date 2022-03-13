@@ -16,11 +16,10 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	ctrcontent "github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/remotes"
 	"github.com/lf-edge/edge-containers/pkg/registry"
 	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
 	"oras.land/oras-go/pkg/oras"
+	"oras.land/oras-go/pkg/target"
 
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -42,8 +41,8 @@ type MockedPush struct {
 	mock.Mock
 }
 
-func (m *MockedPush) Push(ctx context.Context, resolver remotes.Resolver, ref string, provider ctrcontent.Provider, descriptors []ocispec.Descriptor, opts ...oras.PushOpt) (ocispec.Descriptor, error) {
-	m.Called(ctx, resolver, ref, provider, descriptors, opts)
+func (m *MockedPush) Push(ctx context.Context, from target.Target, fromRef string, to target.Target, toRef string, opts ...oras.CopyOpt) (ocispec.Descriptor, error) {
+	m.Called(ctx, from, fromRef, to, toRef, opts)
 	return desc, nil
 }
 
@@ -144,7 +143,7 @@ func TestPush(t *testing.T) {
 		format   registry.Format
 		contents []ocispec.Descriptor
 		digest   string
-		opts     []oras.PushOpt
+		opts     []oras.CopyOpt
 		err      error
 	}{
 		// no artifact
@@ -170,7 +169,8 @@ func TestPush(t *testing.T) {
 		// ensure it is called in the right way - this will check the arguments
 		m := new(MockedPush)
 		// TODO: the last argument here should check that the config is created
-		m.On("Push", mock.Anything, mock.Anything, tt.image, mock.Anything, tt.contents, mock.MatchedBy(func(opts []oras.PushOpt) bool { return len(opts) == 1 })).Return(desc, nil)
+		// func(ctx context.Context, from target.Target, fromRef string, to target.Target, toRef string, opts ...oras.CopyOpt) (ocispec.Descriptor, error)
+		m.On("Push", mock.Anything, mock.Anything, tt.image, mock.Anything, "", mock.MatchedBy(func(opts []oras.CopyOpt) bool { return len(opts) == len(tt.opts) })).Return(desc, nil)
 		// create the Pusher
 		pusher := registry.Pusher{
 			Artifact:  tt.artifact,
