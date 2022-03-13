@@ -91,7 +91,7 @@ func TestManifest(t *testing.T) {
 			defer os.RemoveAll(manifestTmpDir)
 		}
 
-		manifest, _, err := tt.artifact.Manifest(tt.format, registry.ConfigOpts{}, legacyOpts...)
+		manifest, _, err := tt.artifact.Manifest(tt.format, registry.ConfigOpts{}, "", legacyOpts...)
 		switch {
 		case (err != nil && tt.err == nil) || (err == nil && tt.err != nil) || (err != nil && tt.err != nil && !strings.HasPrefix(err.Error(), tt.err.Error())):
 			t.Errorf("%d: mismatched errors, actual %v expected %v", i, err, tt.err)
