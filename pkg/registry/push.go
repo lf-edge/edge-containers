@@ -40,7 +40,7 @@ type Pusher struct {
 //
 // The target determines the target type. target.Registry just uses the default registry,
 // while target.Directory uses a local directory.
-func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts ConfigOpts, resolver ecresolver.ResolverCloser) (string, error) {
+func (p Pusher) Push(format Format, verbose bool, statusWriter io.Writer, configOpts ConfigOpts, to ecresolver.ResolverCloser) (string, error) {
 	var (
 		desc     ocispec.Descriptor
 		err      error
@@ -60,7 +60,7 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 	}
 
 	// get the saved context; if nil, create a background one
-	ctx := resolver.Context()
+	ctx := to.Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -81,21 +81,21 @@ func (p Pusher) Push(format Format, verbose bool, writer io.Writer, configOpts C
 		defer os.RemoveAll(tmpDir)
 	}
 
-	_, provider, err := p.Artifact.Manifest(format, configOpts, p.Image, legacyOpts...)
+	_, from, err := p.Artifact.Manifest(format, configOpts, p.Image, legacyOpts...)
 	if err != nil {
 		return "", fmt.Errorf("could not build manifest: %v", err)
 	}
 
 	if verbose {
-		copyOpts = append(copyOpts, oras.WithPullStatusTrack(writer))
+		copyOpts = append(copyOpts, oras.WithPullStatusTrack(statusWriter))
 	}
 
 	// push the data
-	desc, err = p.Impl(ctx, provider, p.Image, resolver, "", copyOpts...)
+	desc, err = p.Impl(ctx, from, p.Image, to, "", copyOpts...)
 	if err != nil {
 		return "", err
 	}
-	if err := resolver.Finalize(ctx); err != nil {
+	if err := to.Finalize(ctx); err != nil {
 		return desc.Digest.String(), fmt.Errorf("failed to finalize: %v", err)
 	}
 	return desc.Digest.String(), nil

@@ -78,10 +78,10 @@ var pullFilesCmd = &cobra.Command{
 		fmt.Printf("Pulled image %s with digest %s\n", image, string(desc.Digest))
 		fmt.Println("file locations and types:")
 		if kernel != "" {
-			fmt.Printf("\tkernel: %v\n", artifact.Kernel)
+			fmt.Printf("\tkernel: %v\n", artifact.Kernel.GetPath())
 		}
 		if initrd != "" {
-			fmt.Printf("\tinitrd: %s\n", artifact.Initrd)
+			fmt.Printf("\tinitrd: %s\n", artifact.Initrd.GetPath())
 		}
 		if rootDisk != "" {
 			root := artifact.Root
