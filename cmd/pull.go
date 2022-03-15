@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 
 	"github.com/lf-edge/edge-containers/pkg/registry"
 	"github.com/sirupsen/logrus"
@@ -37,16 +38,16 @@ var pullCmd = &cobra.Command{
 		}
 		fmt.Printf("Pulled image %s with digest %s to directory %s\n", image, string(desc.Digest), pullDir)
 		fmt.Println("file locations and types:")
-		fmt.Printf("\tkernel: %s\n", artifact.Kernel)
-		fmt.Printf("\tinitrd: %s\n", artifact.Initrd)
+		fmt.Printf("\tkernel: %s\n", path.Join(pullDir, artifact.Kernel.GetPath()))
+		fmt.Printf("\tinitrd: %s\n", path.Join(pullDir, artifact.Initrd.GetPath()))
 		rootDisk := artifact.Root
 		if rootDisk == nil {
 			fmt.Printf("\troot: \n")
 		} else {
-			fmt.Printf("\troot: %s %v\n", rootDisk.Source.GetPath(), rootDisk.Type)
+			fmt.Printf("\troot: %s %v\n", path.Join(pullDir, rootDisk.Source.GetPath()), rootDisk.Type)
 		}
 		for i, d := range artifact.Disks {
-			fmt.Printf("\tadditional disk %d: %s %v\n", i, d.Source.GetPath(), d.Type)
+			fmt.Printf("\tadditional disk %d: %s %v\n", i, path.Join(pullDir, d.Source.GetPath()), d.Type)
 		}
 	},
 }
