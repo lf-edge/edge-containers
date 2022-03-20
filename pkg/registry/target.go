@@ -95,11 +95,12 @@ func (f *FilesTarget) Pusher(ctx context.Context, ref string) (remotes.Pusher, e
 	if len(parts) > 1 {
 		hash = parts[1]
 	}
-	return &filesPusher{
+	pusher := &filesPusher{
 		target: f,
 		ref:    tag,
 		hash:   hash,
-	}, nil
+	}
+	return content.NewDecompress(pusher, content.WithMultiWriterIngester()), nil
 }
 
 func (f *FilesTarget) Writer(ctx context.Context, opts ...ctrcontent.WriterOpt) (ctrcontent.Writer, error) {
@@ -190,7 +191,29 @@ func (f *filesPusher) Push(ctx context.Context, desc ocispec.Descriptor) (ctrcon
 	case RoleAdditionalDisk:
 	}
 
+	//return content.NewIoContentWriter(nil, writerOpts...), nil
 	return content.NewIoContentWriter(nil, writerOpts...), nil
+}
+
+func (f *filesPusher) Pushers(ctx context.Context, desc ocispec.Descriptor) (func(name string) (ctrcontent.Writer, error), error) {
+	writerOpts := []content.WriterOpt{}
+	if f.target.BlockSize > 0 {
+		writerOpts = append(writerOpts, content.WithBlocksize(f.target.BlockSize))
+	}
+	if f.target.AcceptHash {
+		writerOpts = append(writerOpts, content.WithInputHash(desc.Digest))
+		writerOpts = append(writerOpts, content.WithOutputHash(desc.Digest))
+	}
+	return func(name string) (ctrcontent.Writer, error) {
+		if f.target.pathWriters == nil {
+			return nil, nil
+		}
+		if w, ok := f.target.pathWriters[name]; ok {
+			return content.NewIoContentWriter(w, writerOpts...), nil
+		}
+
+		return nil, nil
+	}, nil
 }
 
 func (f *filesPusher) configIngestor() ctrcontent.Writer {
