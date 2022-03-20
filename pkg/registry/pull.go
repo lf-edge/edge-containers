@@ -49,14 +49,6 @@ func (p *Puller) Pull(to target.Target, blocksize int, verbose bool, writer io.W
 	}
 	copyOpts := []oras.CopyOpt{}
 
-	/*
-		targetStore, err := target.Pusher(ctx, p.Image)
-		if err != nil {
-			return nil, nil, err
-		}
-		dcstoreOpts := []content.WriterOpt{content.WithBlocksize(blocksize)}
-		decompressStore := content.NewDecompress(targetStore, dcstoreOpts...)
-	*/
 	allowedMediaTypes := AllMimeTypes()
 
 	if verbose {
@@ -67,7 +59,6 @@ func (p *Puller) Pull(to target.Target, blocksize int, verbose bool, writer io.W
 	copyOpts = append(copyOpts,
 		oras.WithAllowedMediaTypes(allowedMediaTypes),
 		oras.WithPullEmptyNameAllowed(),
-		//oras.WithContentStore(decompressStore),
 		oras.WithPullByBFS,
 		oras.WithAdditionalCachedMediaTypes(ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex, images.MediaTypeDockerSchema2Manifest, images.MediaTypeDockerSchema2ManifestList),
 		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
