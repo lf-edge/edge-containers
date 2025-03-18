@@ -2,7 +2,6 @@ package registry_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -14,7 +13,7 @@ import (
 
 func TestManifest(t *testing.T) {
 	// create a temporary directory and install basic test files
-	tmpdir, err := ioutil.TempDir("", "eci-test")
+	tmpdir, err := os.MkdirTemp("", "eci-test")
 	if err != nil {
 		t.Fatalf("unable to create temporary directory: %v", err)
 	}
@@ -27,7 +26,7 @@ func TestManifest(t *testing.T) {
 	inputs["disk1"] = NewTestInputFile("disk1.qcow2", "disk-0-disk1.qcow2", tmpdir)
 	// fill the files
 	for _, v := range inputs {
-		err = ioutil.WriteFile(v.Fullname(), v.Contents(), 0644)
+		err = os.WriteFile(v.Fullname(), v.Contents(), 0644)
 		if err != nil {
 			t.Fatalf("unable to create %s: %v", v.Fullname(), err)
 		}
@@ -83,7 +82,7 @@ func TestManifest(t *testing.T) {
 		legacyOpts = append(legacyOpts, registry.WithTimestamp(&initTime))
 
 		if tt.format == registry.FormatLegacy {
-			manifestTmpDir, err = ioutil.TempDir("", "edge-containers")
+			manifestTmpDir, err = os.MkdirTemp("", "edge-containers")
 			if err != nil {
 				t.Fatalf("could not make temporary directory for tgz files: %v", err)
 			}

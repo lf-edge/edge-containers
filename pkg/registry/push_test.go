@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -98,7 +97,7 @@ func (t TestInputFile) LegacyDigest() digest.Digest {
 
 func TestPush(t *testing.T) {
 	// create a temporary directory and install basic test files
-	tmpdir, err := ioutil.TempDir("", "eci-test")
+	tmpdir, err := os.MkdirTemp("", "eci-test")
 	if err != nil {
 		t.Fatalf("unable to create temporary directory: %v", err)
 	}
@@ -111,7 +110,7 @@ func TestPush(t *testing.T) {
 	inputs["disk1"] = NewTestInputFile("disk1.qcow2", "disk-0-disk1.qcow2", tmpdir)
 	// fill the files
 	for _, v := range inputs {
-		err = ioutil.WriteFile(v.Fullname(), v.Contents(), 0644)
+		err = os.WriteFile(v.Fullname(), v.Contents(), 0644)
 		if err != nil {
 			t.Fatalf("unable to create %s: %v", v.Fullname(), err)
 		}
