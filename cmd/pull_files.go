@@ -41,7 +41,7 @@ var pullFilesCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("failed to open kernel file %s for writing: %v", kernel, err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			target.Kernel = f
 		}
 		if config != "" {
@@ -50,7 +50,7 @@ var pullFilesCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("failed to open config file %s for writing: %v", config, err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			target.Config = f
 		}
 		if initrd != "" {
@@ -59,7 +59,7 @@ var pullFilesCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("failed to open initrd file %s for writing: %v", initrd, err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			target.Initrd = f
 		}
 		if rootDisk != "" {
@@ -68,7 +68,7 @@ var pullFilesCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("failed to open root disk file %s for writing: %v", rootDisk, err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			target.Root = f
 		}
 		desc, artifact, err := puller.Pull(target, blocksize, verbose, os.Stdout, remoteTarget)

@@ -101,7 +101,7 @@ func TestPush(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create temporary directory: %v", err)
 	}
-	defer os.RemoveAll(tmpdir)
+	defer func() { _ = os.RemoveAll(tmpdir) }()
 	// full paths
 	inputs := map[string]TestInputFile{}
 	inputs["kernel"] = NewTestInputFile("kernel", "kernel", tmpdir)
@@ -198,14 +198,14 @@ func TestPush(t *testing.T) {
 func compress(in []byte, name string, timestamp time.Time) (out []byte, err error) {
 	byteWriter := bytes.NewBuffer(nil)
 	gzipWriter := gzip.NewWriter(byteWriter)
-	defer gzipWriter.Close()
+	defer func() { _ = gzipWriter.Close() }()
 	tarWriter := tar.NewWriter(gzipWriter)
-	defer tarWriter.Close()
+	defer func() { _ = tarWriter.Close() }()
 	if err := addBytesToTarWriter(in, name, tarWriter, timestamp); err != nil {
 		return nil, err
 	}
-	tarWriter.Close()
-	gzipWriter.Close()
+	_ = tarWriter.Close()
+	_ = gzipWriter.Close()
 	out = byteWriter.Bytes()
 	return
 }
