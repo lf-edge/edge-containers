@@ -17,7 +17,7 @@ func TestManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create temporary directory: %v", err)
 	}
-	defer os.RemoveAll(tmpdir)
+	defer func() { _ = os.RemoveAll(tmpdir) }()
 	// full paths
 	inputs := map[string]TestInputFile{}
 	inputs["kernel"] = NewTestInputFile("kernel", "kernel", tmpdir)
@@ -87,7 +87,7 @@ func TestManifest(t *testing.T) {
 				t.Fatalf("could not make temporary directory for tgz files: %v", err)
 			}
 			legacyOpts = append(legacyOpts, registry.WithTmpDir(manifestTmpDir))
-			defer os.RemoveAll(manifestTmpDir)
+			defer func() { _ = os.RemoveAll(manifestTmpDir) }()
 		}
 
 		manifest, _, err := tt.artifact.Manifest(tt.format, registry.ConfigOpts{}, "", legacyOpts...)
