@@ -118,7 +118,7 @@ vet: pkgs
 ## to not test file for race use `// +build !race` at top
 ## Run data race detector
 race: pkgs
-	@$(BUILD_CMD) go test -race -short ${PKG_LIST}
+	@CGO_ENABLED=1 go test -race -short ${PKG_LIST}
 
 ## Display this help screen
 help: 
