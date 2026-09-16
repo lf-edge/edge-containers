@@ -1,8 +1,8 @@
 package resolver
 
 /*
- Provides a github.com/containerd/containerd/remotes#Resolver that resolves
- to an OCI registry, authenticating from the local docker credential store.
+ Provides an oras target that reads and writes an OCI registry, authenticating
+ from the local docker credential store.
 
 */
 
@@ -10,14 +10,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/containerd/containerd/remotes"
-	"oras.land/oras-go/pkg/auth"
-	authdocker "oras.land/oras-go/pkg/auth/docker"
+	oras "oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
+	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
+// Registry resolver that reads and writes an OCI registry.
 type Registry struct {
-	remotes.Resolver
-	ctx context.Context
+	ctx        context.Context
+	plainHTTP  bool
+	credential auth.CredentialFunc
 }
 
 // registryOpts settings accumulated by the RegistryOpt passed to NewRegistryWithOpts.
@@ -41,33 +45,39 @@ func NewRegistry(ctx context.Context) (context.Context, *Registry, error) {
 	return NewRegistryWithOpts(ctx)
 }
 
-// resolverOptions translate the settings into the equivalent oras resolver options.
-func (o registryOpts) resolverOptions() []auth.ResolverOption {
-	var opts []auth.ResolverOption
-	if o.plainHTTP {
-		opts = append(opts, auth.WithResolverPlainHTTP())
-	}
-	return opts
-}
-
 // NewRegistryWithOpts create a Registry resolver configured by opts.
 func NewRegistryWithOpts(ctx context.Context, opts ...RegistryOpt) (context.Context, *Registry, error) {
 	var settings registryOpts
 	for _, opt := range opts {
 		opt(&settings)
 	}
-	cli, err := authdocker.NewClient()
+	store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to get authenticating client to registry: %v", err)
+		return nil, nil, fmt.Errorf("unable to read docker credentials: %v", err)
 	}
-	resolver, err := cli.ResolverWithOpts(settings.resolverOptions()...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to get resolver for registry: %v", err)
-	}
-	return ctx, &Registry{Resolver: resolver, ctx: ctx}, nil
+	return ctx, &Registry{
+		ctx:        ctx,
+		plainHTTP:  settings.plainHTTP,
+		credential: credentials.Credential(store),
+	}, nil
 }
 
-func (r *Registry) Finalize(ctx context.Context) error {
+// Target returns a target bound to the repository named by ref.
+func (r *Registry) Target(_ context.Context, ref string) (oras.Target, error) {
+	repo, err := remote.NewRepository(ref)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse reference %s: %v", ref, err)
+	}
+	repo.PlainHTTP = r.plainHTTP
+	repo.Client = &auth.Client{
+		Client:     retry.DefaultClient,
+		Cache:      auth.NewCache(),
+		Credential: r.credential,
+	}
+	return repo, nil
+}
+
+func (r *Registry) Finalize(_ context.Context) error {
 	return nil
 }
 

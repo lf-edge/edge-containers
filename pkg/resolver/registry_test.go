@@ -4,13 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"oras.land/oras-go/pkg/auth"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
-// TestRegistryOptResolverOptions checks that each RegistryOpt reaches the oras
-// resolver setting it stands for. A constructed Registry keeps no record of the
-// settings it was built from, so this translation is only observable here.
-func TestRegistryOptResolverOptions(t *testing.T) {
+const testRef = "example.com/foo/bar:v1"
+
+// TestRegistryTargetPlainHTTP checks that each RegistryOpt reaches the repository
+// setting it stands for.
+func TestRegistryTargetPlainHTTP(t *testing.T) {
 	tests := []struct {
 		name      string
 		opts      []RegistryOpt
@@ -21,16 +22,24 @@ func TestRegistryOptResolverOptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var settings registryOpts
-			for _, opt := range tt.opts {
-				opt(&settings)
+			ctx := context.Background()
+			_, reg, err := NewRegistryWithOpts(ctx, tt.opts...)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
 			}
-			var got auth.ResolverSettings
-			for _, opt := range settings.resolverOptions() {
-				opt(&got)
+			target, err := reg.Target(ctx, testRef)
+			if err != nil {
+				t.Fatalf("Target: %v", err)
 			}
-			if got.PlainHTTP != tt.plainHTTP {
-				t.Errorf("PlainHTTP = %v, want %v", got.PlainHTTP, tt.plainHTTP)
+			repo, ok := target.(*remote.Repository)
+			if !ok {
+				t.Fatalf("Target returned %T, want *remote.Repository", target)
+			}
+			if repo.PlainHTTP != tt.plainHTTP {
+				t.Errorf("PlainHTTP = %v, want %v", repo.PlainHTTP, tt.plainHTTP)
+			}
+			if repo.Client == nil {
+				t.Error("repository has no client, so it would not authenticate")
 			}
 		})
 	}
@@ -52,15 +61,47 @@ func TestNewRegistryDefaults(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if reg.Resolver == nil {
-				t.Error("no resolver returned")
-			}
 			if gotCtx != ctx || reg.Context() != ctx {
 				t.Error("context not carried through")
+			}
+			target, err := reg.Target(ctx, testRef)
+			if err != nil {
+				t.Fatalf("Target: %v", err)
+			}
+			if repo := target.(*remote.Repository); repo.PlainHTTP {
+				t.Error("default reaches the registry over plain HTTP")
 			}
 			if err := reg.Finalize(ctx); err != nil {
 				t.Errorf("Finalize: %v", err)
 			}
 		})
+	}
+}
+
+// TestRegistryTargetRejectsBadReference checks that an unparseable reference is
+// reported rather than producing a target that fails later.
+func TestRegistryTargetRejectsBadReference(t *testing.T) {
+	ctx := context.Background()
+	_, reg, err := NewRegistry(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := reg.Target(ctx, "not a reference"); err == nil {
+		t.Error("expected an error for an invalid reference")
+	}
+}
+
+// TestRegistryTargetRejectsUppercaseRepository records that a registry reference
+// must be lowercase, as the OCI distribution spec requires. containerd's parser
+// accepted mixed case, so a reference that names a repository that way now fails
+// where it once reached the registry and failed there instead.
+func TestRegistryTargetRejectsUppercaseRepository(t *testing.T) {
+	ctx := context.Background()
+	_, reg, err := NewRegistry(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := reg.Target(ctx, "docker.io/foo/testImage:abc"); err == nil {
+		t.Error("expected an error for an uppercase repository name")
 	}
 }

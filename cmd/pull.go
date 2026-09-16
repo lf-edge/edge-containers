@@ -9,7 +9,7 @@ import (
 	"github.com/lf-edge/edge-containers/pkg/registry"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/pkg/content"
+	"oras.land/oras-go/v2/content/file"
 )
 
 var (
@@ -32,7 +32,12 @@ var pullCmd = &cobra.Command{
 		puller := registry.Puller{
 			Image: image,
 		}
-		desc, artifact, err := puller.Pull(content.NewFile(pullDir), blocksize, verbose, os.Stdout, remoteTarget)
+		store, err := file.New(pullDir)
+		if err != nil {
+			log.Fatalf("error opening %s for writing: %v", pullDir, err)
+		}
+		defer func() { _ = store.Close() }()
+		desc, artifact, err := puller.Pull(store, blocksize, verbose, os.Stdout, remoteTarget)
 		if err != nil {
 			log.Fatalf("error pulling from registry: %v", err)
 		}
@@ -59,7 +64,7 @@ func pullInit() {
 	}
 
 	pullCmd.Flags().StringVar(&pullDir, "dir", cwd, "directory where to install the ECI, optional")
-	pullCmd.Flags().IntVar(&blocksize, "blocksize", content.DefaultBlocksize, "blocksize to use for gunzip/untar")
+	pullCmd.Flags().IntVar(&blocksize, "blocksize", registry.DefaultBlockSize, "blocksize to use for gunzip/untar")
 	pullCmd.Flags().BoolVar(&debug, "debug", false, "debug output")
 	pullCmd.Flags().BoolVar(&verbose, "verbose", false, "verbose output")
 }
