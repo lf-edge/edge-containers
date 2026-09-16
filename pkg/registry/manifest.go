@@ -12,6 +12,7 @@ import (
 	oras "oras.land/oras-go/v2"
 
 	digest "github.com/opencontainers/go-digest"
+	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -190,6 +191,8 @@ func (a Artifact) Manifest(format Format, configOpts ConfigOpts, ref string, leg
 	// make our manifest
 	mediaType := ocispec.MediaTypeImageManifest
 	manifest := &ocispec.Manifest{
+		// a registry rejects a manifest that does not declare schema version 2
+		Versioned: specs.Versioned{SchemaVersion: 2},
 		Config:    desc,
 		Layers:    pushContents,
 		MediaType: mediaType,
