@@ -29,7 +29,11 @@ var rootCmd = &cobra.Command{
 		)
 		switch {
 		case remote == "":
-			_, remoteTarget, err = ecresolver.NewRegistry(ctx)
+			var opts []ecresolver.RegistryOpt
+			if plainHTTP {
+				opts = append(opts, ecresolver.WithPlainHTTP())
+			}
+			_, remoteTarget, err = ecresolver.NewRegistryWithOpts(ctx, opts...)
 		case strings.HasPrefix(remote, "containerd:"):
 			_, remoteTarget, err = ecresolver.NewContainerd(ctx, strings.Replace(remote, "containerd:", "", 1), ctrNamespace)
 		case strings.HasPrefix(remote, "file://"):
@@ -55,6 +59,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&remote, "remote", "", "remote to use for push/pull, leave blank to use default registry for image")
 	rootCmd.PersistentFlags().StringVar(&ctrNamespace, "namespace", "default", "namespace to use for containerd, ignored for all other remotes")
+	rootCmd.PersistentFlags().BoolVar(&plainHTTP, "plain-http", false, "contact the registry over HTTP rather than HTTPS, ignored for all other remotes")
 
 }
 
