@@ -17,15 +17,14 @@ import (
 
 	"github.com/lf-edge/edge-containers/pkg/registry"
 	ecresolver "github.com/lf-edge/edge-containers/pkg/resolver"
-	"oras.land/oras-go/pkg/oras"
-	"oras.land/oras-go/pkg/target"
+	oras "oras.land/oras-go/v2"
 
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 const (
-	testImageName = "docker.io/foo/testImage:abc"
+	testImageName = "docker.io/foo/testimage:abc"
 	rootDiskType  = registry.Raw
 	diskOneType   = registry.Qcow2
 )
@@ -40,7 +39,7 @@ type MockedPush struct {
 	mock.Mock
 }
 
-func (m *MockedPush) Push(ctx context.Context, from target.Target, fromRef string, to target.Target, toRef string, opts ...oras.CopyOpt) (ocispec.Descriptor, error) {
+func (m *MockedPush) Push(ctx context.Context, from oras.ReadOnlyTarget, fromRef string, to oras.Target, toRef string, opts oras.CopyOptions) (ocispec.Descriptor, error) {
 	m.Called(ctx, from, fromRef, to, toRef, opts)
 	return desc, nil
 }
@@ -142,34 +141,33 @@ func TestPush(t *testing.T) {
 		format   registry.Format
 		contents []ocispec.Descriptor
 		digest   string
-		opts     []oras.CopyOpt
 		err      error
 	}{
 		// no artifact
-		{nil, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("must have valid Artifact")},
+		{nil, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", fmt.Errorf("must have valid Artifact")},
 		// no image name
-		{&registry.Artifact{}, "", registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("must have valid image ref")},
+		{&registry.Artifact{}, "", registry.FormatArtifacts, []ocispec.Descriptor{}, "", fmt.Errorf("must have valid image ref")},
 		// missing kernel file
-		{&registry.Artifact{Kernel: &registry.FileSource{Path: "abcd.kernel"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding kernel")},
+		{&registry.Artifact{Kernel: &registry.FileSource{Path: "abcd.kernel"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", fmt.Errorf("could not build manifest: error adding kernel")},
 		// missing initrd file
-		{&registry.Artifact{Initrd: &registry.FileSource{Path: "abcd.initrd"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding initrd")},
+		{&registry.Artifact{Initrd: &registry.FileSource{Path: "abcd.initrd"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", fmt.Errorf("could not build manifest: error adding initrd")},
 		// missing config file
-		{&registry.Artifact{Config: &registry.FileSource{Path: "abcd.config"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding config")},
+		{&registry.Artifact{Config: &registry.FileSource{Path: "abcd.config"}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", fmt.Errorf("could not build manifest: error adding config")},
 		// missing root disk
-		{&registry.Artifact{Root: &registry.Disk{Source: &registry.FileSource{Path: "abcd.diskroot"}, Type: rootDiskType}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding disk-root")},
+		{&registry.Artifact{Root: &registry.Disk{Source: &registry.FileSource{Path: "abcd.diskroot"}, Type: rootDiskType}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", fmt.Errorf("could not build manifest: error adding disk-root")},
 		// missing additional disk
-		{&registry.Artifact{Disks: []*registry.Disk{{Source: &registry.FileSource{Path: "abcd.diskone"}, Type: registry.Vmdk}}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", nil, fmt.Errorf("could not build manifest: error adding disk-0")},
+		{&registry.Artifact{Disks: []*registry.Disk{{Source: &registry.FileSource{Path: "abcd.diskone"}, Type: registry.Vmdk}}}, testImageName, registry.FormatArtifacts, []ocispec.Descriptor{}, "", fmt.Errorf("could not build manifest: error adding disk-0")},
 		// normal without legacy
-		{validArtifact, testImageName, registry.FormatArtifacts, expectedDescriptors, string(desc.Digest), nil, nil},
+		{validArtifact, testImageName, registry.FormatArtifacts, expectedDescriptors, string(desc.Digest), nil},
 		// normal with legacy
-		{validArtifact, testImageName, registry.FormatLegacy, expectedDescriptorsLegacy, string(desc.Digest), nil, nil},
+		{validArtifact, testImageName, registry.FormatLegacy, expectedDescriptorsLegacy, string(desc.Digest), nil},
 	}
 	for i, tt := range tests {
 		// ensure it is called in the right way - this will check the arguments
 		m := new(MockedPush)
 		// TODO: the last argument here should check that the config is created
-		// func(ctx context.Context, from target.Target, fromRef string, to target.Target, toRef string, opts ...oras.CopyOpt) (ocispec.Descriptor, error)
-		m.On("Push", mock.Anything, mock.Anything, tt.image, mock.Anything, "", mock.MatchedBy(func(opts []oras.CopyOpt) bool { return len(opts) == len(tt.opts) })).Return(desc, nil)
+		// a non-verbose push reports no progress, so it sets no PostCopy hook
+		m.On("Push", mock.Anything, mock.Anything, tt.image, mock.Anything, tt.image, mock.MatchedBy(func(opts oras.CopyOptions) bool { return opts.PostCopy == nil })).Return(desc, nil)
 		// create the Pusher
 		pusher := registry.Pusher{
 			Artifact:  tt.artifact,

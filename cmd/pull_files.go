@@ -8,7 +8,6 @@ import (
 	"github.com/lf-edge/edge-containers/pkg/registry"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/pkg/content"
 )
 
 var (
@@ -102,7 +101,7 @@ func pullFilesInit() {
 	pullFilesCmd.Flags().StringVar(&config, "config", "", "path to place image config")
 	pullFilesCmd.Flags().StringVar(&initrd, "initrd", "", "path to place initrd")
 	pullFilesCmd.Flags().StringVar(&rootDisk, "root", "", "path to place root disk")
-	pullFilesCmd.Flags().IntVar(&blocksize, "blocksize", content.DefaultBlocksize, "blocksize to use for gunzip/untar")
+	pullFilesCmd.Flags().IntVar(&blocksize, "blocksize", registry.DefaultBlockSize, "blocksize to use for gunzip/untar")
 	pullFilesCmd.Flags().BoolVar(&debug, "debug", false, "debug output")
 	pullFilesCmd.Flags().BoolVar(&verbose, "verbose", false, "verbose output")
 }
