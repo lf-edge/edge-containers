@@ -38,6 +38,9 @@ func (p *Puller) Pull(to oras.Target, blocksize int, verbose bool, writer io.Wri
 	if p.Impl == nil {
 		p.Impl = oras.Copy
 	}
+	if t, ok := to.(*FilesTarget); ok && blocksize > 0 {
+		t.BlockSize = blocksize
+	}
 
 	// get the saved context; if nil, create a background one
 	ctx := resolver.Context()
