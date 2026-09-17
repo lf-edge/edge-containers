@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
+	"strings"
 )
 
 // Uncompress takes a given path to a tgz file and extracts the contents
@@ -25,6 +26,11 @@ func Uncompress(infile, outdir string) error {
 	defer func() { _ = gzipReader.Close() }()
 	tarReader := tar.NewReader(gzipReader)
 
+	baseDir, err := filepath.Abs(outdir)
+	if err != nil {
+		return fmt.Errorf("could not resolve output directory '%s': %v", outdir, err)
+	}
+
 	for {
 		hdr, err := tarReader.Next()
 		if err == io.EOF {
@@ -34,7 +40,13 @@ func Uncompress(infile, outdir string) error {
 			return fmt.Errorf("error reading tar entry header: %v", err)
 		}
 		filename := hdr.Name
-		fullFilename := path.Join(outdir, filename)
+		fullFilename := filepath.Clean(filepath.Join(baseDir, filename))
+		if fullFilename != baseDir && !strings.HasPrefix(fullFilename, baseDir+string(os.PathSeparator)) {
+			return fmt.Errorf("invalid tar entry path %q: outside output directory", filename)
+		}
+		if err := os.MkdirAll(filepath.Dir(fullFilename), 0o755); err != nil {
+			return fmt.Errorf("error creating directory for %s: %w", fullFilename, err)
+		}
 		// open a file to write
 		f, err := os.Create(fullFilename)
 		if err != nil {
